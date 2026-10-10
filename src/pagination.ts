@@ -86,6 +86,7 @@ export function extractBottomCursor(data: unknown): string | undefined {
 
 /**
  * Counts timeline entries in a raw response, split into content entries and cursor entries.
+ * Slice responses count each `items_results` element as an item and their `slice_info` as a cursor.
  * Used to stop paginating when X keeps returning a cursor but no more results.
  */
 export function countTimelineEntries(data: unknown): { items: number; cursors: number } {
@@ -106,6 +107,13 @@ export function countTimelineEntries(data: unknown): { items: number; cursors: n
       if (obj.entryId.startsWith("cursor-")) cursors++;
       else items++;
       continue; // entries do not nest other top-level entries
+    }
+    // Slice-based responses (community search/members/moderators, job search) list results in
+    // `items_results` and page with `slice_info.next_cursor` instead of cursor entries.
+    if (Array.isArray(obj.items_results)) {
+      items += obj.items_results.length;
+      if (obj.slice_info && typeof obj.slice_info === "object") cursors++;
+      continue;
     }
     for (const v of Object.values(obj)) if (v && typeof v === "object") stack.push(v);
   }

@@ -1,0 +1,10 @@
+{
+  "request": "GET /user/usernames/to/ids?usernames=XDevelopers,jack",
+  "capturedAt": "2026-10-10",
+  "response": {
+    "userIds": {
+      "XDevelopers": "2244994945",
+      "jack": "12"
+    }
+  }
+}
