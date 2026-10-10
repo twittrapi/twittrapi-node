@@ -1,7 +1,11 @@
-# twittrapi
+# twittrapi – Twitter/X API client for Node.js and TypeScript
+
+[![npm](https://img.shields.io/npm/v/twittrapi.svg)](https://www.npmjs.com/package/twittrapi) [![CI](https://github.com/twittrapi/twittrapi-node/actions/workflows/ci.yml/badge.svg)](https://github.com/twittrapi/twittrapi-node/actions)
 
 Official Node.js and TypeScript SDK for [TwittrAPI](https://twittrapi.com), a Twitter/X data API.
 Read profiles, tweets, followers, search results, lists, communities and trends.
+
+> **Get an API key:** [twittrapi.com/start](https://twittrapi.com/start?utm_source=github&utm_medium=readme&utm_campaign=twittrapi-node) · [Pricing](https://twittrapi.com/pricing?utm_source=github&utm_medium=readme&utm_campaign=twittrapi-node) · [Docs](https://twittrapi.com/docs?utm_source=github&utm_medium=readme&utm_campaign=twittrapi-node) · also available on [RapidAPI](https://rapidapi.com/viperscores-viperscores-default/api/twitter-aio)
 
 - No runtime dependencies. Uses the built-in `fetch` (Node 18+).
 - ESM and CommonJS, with type declarations.
@@ -253,6 +257,10 @@ npm test        # compiles and runs the tests with node:test
 npm run build   # writes dist/esm and dist/cjs
 npm run smoke   # loads the built package through ESM and CommonJS
 ```
+
+## Support
+
+Questions, bugs or a higher rate limit: email support@twittrapi.com or open an issue in this repository. Service status: [status.twittrapi.com](https://status.twittrapi.com). News and changes: the TwittrAPI Telegram channel (link on the website).
 
 ## License
 
