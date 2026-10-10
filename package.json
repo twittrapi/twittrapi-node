@@ -1,0 +1,64 @@
+{
+  "name": "twittrapi",
+  "version": "0.1.0",
+  "description": "Official Node.js and TypeScript SDK for TwittrAPI, a Twitter/X data API: profiles, tweets, followers, search, lists, communities and trends.",
+  "license": "MIT",
+  "author": "TwittrAPI",
+  "homepage": "https://twittrapi.com",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/twittrapi/twittrapi-node.git"
+  },
+  "bugs": {
+    "url": "https://github.com/twittrapi/twittrapi-node/issues"
+  },
+  "keywords": [
+    "twitter",
+    "x",
+    "twitter-api",
+    "x-api",
+    "tweets",
+    "followers",
+    "scraper",
+    "sdk"
+  ],
+  "type": "module",
+  "main": "./dist/cjs/index.js",
+  "module": "./dist/esm/index.js",
+  "types": "./dist/cjs/index.d.ts",
+  "exports": {
+    ".": {
+      "import": {
+        "types": "./dist/esm/index.d.ts",
+        "default": "./dist/esm/index.js"
+      },
+      "require": {
+        "types": "./dist/cjs/index.d.ts",
+        "default": "./dist/cjs/index.js"
+      }
+    },
+    "./package.json": "./package.json"
+  },
+  "files": [
+    "dist",
+    "README.md",
+    "CHANGELOG.md",
+    "LICENSE"
+  ],
+  "sideEffects": false,
+  "engines": {
+    "node": ">=18"
+  },
+  "scripts": {
+    "clean": "node scripts/clean.mjs",
+    "build": "node scripts/clean.mjs dist && tsc -p tsconfig.esm.json && tsc -p tsconfig.cjs.json && node scripts/write-cjs-package.mjs",
+    "typecheck": "tsc -p tsconfig.json --noEmit",
+    "test": "node scripts/clean.mjs build-test && tsc -p tsconfig.test.json && node scripts/run-tests.mjs",
+    "smoke": "node scripts/smoke.mjs && node scripts/smoke.cjs",
+    "prepublishOnly": "npm test && npm run build && npm run smoke"
+  },
+  "devDependencies": {
+    "@types/node": "18.19.130",
+    "typescript": "6.0.3"
+  }
+}
