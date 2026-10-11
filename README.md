@@ -260,7 +260,7 @@ npm run smoke   # loads the built package through ESM and CommonJS
 
 ## Support
 
-Questions, bugs or a higher rate limit: email support@twittrapi.com or open an issue in this repository. Service status: [status.twittrapi.com](https://status.twittrapi.com). News and changes: the TwittrAPI Telegram channel (link on the website).
+Questions, bugs or a higher rate limit: email support@twittrapi.com or open an issue in this repository. Service status: [twittrapi.com/status](https://twittrapi.com/status). News and changes: the TwittrAPI Telegram channel (link on the website).
 
 ## License
 
