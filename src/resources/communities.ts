@@ -1,5 +1,13 @@
-import type { CommunityResponse, PageParams, RequestOptions, TimelineResponse } from "../types.js";
-import { APIResource, enc, nonEmpty, numericId, pageQuery } from "./shared.js";
+import type {
+  CommunityResponse,
+  PageParams,
+  ResponseFormat,
+  SimpleCommunitiesPage,
+  SimpleCommunityResponse,
+  SimpleTweetsPage,
+  TimelineResponse,
+} from "../types.js";
+import { APIResource, enc, formatMethod, nonEmpty, numericId, pageQuery } from "./shared.js";
 
 export interface CommunityPageParams extends PageParams {
   communityId: string;
@@ -11,22 +19,25 @@ export interface CommunitySearchParams extends PageParams {
 }
 
 /** X Communities. */
-export class Communities extends APIResource {
+export class Communities<F extends ResponseFormat = "raw"> extends APIResource<F> {
   /** Gets a community's name, description, rules, member count and admins. */
-  get = async (communityId: string, options?: RequestOptions): Promise<CommunityResponse> =>
-    this.client.get({ path: `/communities/${numericId("communityId", communityId)}` }, options);
+  get = formatMethod<F, string, CommunityResponse, SimpleCommunityResponse>(async (communityId, options) =>
+    this.client.get({ path: `/communities/${numericId("communityId", communityId)}` }, options),
+  );
 
   /** Tweets posted in a community. Paginated. */
-  tweets = async (params: CommunityPageParams, options?: RequestOptions): Promise<TimelineResponse> =>
+  tweets = formatMethod<F, CommunityPageParams, TimelineResponse, SimpleTweetsPage>(async (params, options) =>
     this.client.get(
       { path: `/communities/${numericId("communityId", params?.communityId)}/tweets`, query: pageQuery(params) },
       options,
-    );
+    ),
+  );
 
   /** Searches communities by keyword. Paginated. */
-  search = async (params: CommunitySearchParams, options?: RequestOptions): Promise<TimelineResponse> =>
+  search = formatMethod<F, CommunitySearchParams, TimelineResponse, SimpleCommunitiesPage>(async (params, options) =>
     this.client.get(
       { path: `/communities/search/${enc(nonEmpty("query", params?.query))}`, query: pageQuery(params) },
       options,
-    );
+    ),
+  );
 }

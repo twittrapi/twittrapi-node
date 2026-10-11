@@ -6,16 +6,32 @@ All notable changes to this package are listed here. The format follows
 
 ## [Unreleased]
 
+## [0.2.0] - 2026-10-11
+
+Non-breaking: the default stays the raw format, and existing calls send the same requests.
+
+### Added
+
+- Opt-in simple response format (`format=simple`, see https://twittrapi.com/docs/simple-format).
+  `new TwittrAPI({ format: "simple" })` sets it for the client; `{ format: "simple" | "raw" }` in
+  any method's request options overrides it per call. The default is `"raw"`.
+- Types for the simple format: `SimpleTweet`, `SimpleUser`, `SimpleList`, `SimpleCommunity`,
+  `SimpleTrend`, `SimpleTrendLocation`, `SimpleMedia`, `SimpleUnavailableTweet` and the
+  `SimplePage<T>` / `SimpleSingle<T>` envelopes. Method return types follow the client default and
+  the per-call option.
+- `paginate()` follows `nextCursor` until `hasNextPage` is false on simple-format pages, and still
+  uses the raw cursor detection when the API answers raw.
+- `isSimplePage()`, `isUnavailableTweet()`, `RESPONSE_FORMATS` and `client.format`.
+- Tests against simple-format fixtures copied from the API's normalize testdata
+  (`test/fixtures/simple`), checking every field of the types against real converted responses.
+- Tests against trimmed real API responses (`test/fixtures/live`): cursor extraction for every
+  paginated shape (timelines, followers with Bottom before Top, tweet detail, search wrapper,
+  slice `next_cursor`) and clean stops on empty likes/favorites timelines.
+
 ### Fixed
 
 - `paginate()` now stops on slice-based pages (community search, job search) that return a
   `slice_info.next_cursor` but an empty `items_results`, instead of following the cursor.
-
-### Added
-
-- Tests against trimmed real API responses (`test/fixtures/live`): cursor extraction for every
-  paginated shape (timelines, followers with Bottom before Top, tweet detail, search wrapper,
-  slice `next_cursor`) and clean stops on empty likes/favorites timelines.
 
 ## [0.1.0] - 2026-10-10
 
@@ -32,5 +48,6 @@ All notable changes to this package are listed here. The format follows
 - `client.paginate()` async iterator that follows X's bottom cursor, plus `extractCursors()`.
 - ESM and CommonJS builds with type declarations. No runtime dependencies.
 
-[Unreleased]: https://github.com/twittrapi/twittrapi-node/compare/v0.1.0...HEAD
+[Unreleased]: https://github.com/twittrapi/twittrapi-node/compare/v0.2.0...HEAD
+[0.2.0]: https://github.com/twittrapi/twittrapi-node/compare/v0.1.0...v0.2.0
 [0.1.0]: https://github.com/twittrapi/twittrapi-node/releases/tag/v0.1.0

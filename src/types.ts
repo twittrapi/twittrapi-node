@@ -1,10 +1,20 @@
 /**
  * Shared types.
  *
- * Responses are X's raw GraphQL JSON, passed through unchanged. They are typed loosely on purpose:
- * X changes these shapes without notice, and typed models can be layered on top later without
- * changing method signatures (each method's return type is a named alias below).
+ * By default responses are X's raw GraphQL JSON, passed through unchanged. They are typed loosely on
+ * purpose: X changes these shapes without notice. With `format: "simple"` the API returns small,
+ * stable objects instead; those are typed in simple.ts and selected per method below.
  */
+import type {
+  SimpleCommunity,
+  SimpleList,
+  SimplePage,
+  SimpleSingle,
+  SimpleTimelineTweet,
+  SimpleTrend,
+  SimpleTrendLocation,
+  SimpleUser,
+} from "./simple.js";
 
 /** A parsed JSON object as returned by the API. */
 export type RawResponse = Record<string, unknown>;
@@ -22,6 +32,27 @@ export type CommunityResponse = RawResponse;
 export type TrendsResponse = unknown;
 export type TrendLocationsResponse = unknown;
 
+/**
+ * Response format. "raw" (the default) is X's JSON unchanged; "simple" is the compact format
+ * documented at https://twittrapi.com/docs/simple-format (sent as `format=simple`).
+ */
+export type ResponseFormat = "raw" | "simple";
+
+/** Simple-format return types per method family. */
+export type SimpleUserResponse = SimpleSingle<SimpleUser | null>;
+export type SimpleUsersResponse = SimplePage<SimpleUser>;
+/** Already small, so the API returns it unchanged inside `{ data }`. */
+export type SimpleUsernameToIdResponse = SimpleSingle<UsernameToIdResponse>;
+export type SimpleTweetsPage = SimplePage<SimpleTimelineTweet>;
+export type SimpleUsersPage = SimplePage<SimpleUser>;
+/** Search returns users with category "People" and tweets otherwise. */
+export type SimpleSearchResponse = SimpleTweetsPage | SimpleUsersPage;
+export type SimpleListResponse = SimpleSingle<SimpleList | null>;
+export type SimpleCommunityResponse = SimpleSingle<SimpleCommunity | null>;
+export type SimpleCommunitiesPage = SimplePage<SimpleCommunity>;
+export type SimpleTrendsResponse = SimplePage<SimpleTrend>;
+export type SimpleTrendLocationsResponse = SimplePage<SimpleTrendLocation>;
+
 /** Per-request options accepted by every method as the last argument. */
 export interface RequestOptions {
   /** Cancels the request (including retries and backoff waits). */
@@ -30,7 +61,12 @@ export interface RequestOptions {
   timeoutMs?: number;
   /** Overrides the client's retry count for this request. */
   maxRetries?: number;
+  /** Overrides the client's response format for this request. */
+  format?: ResponseFormat;
 }
+
+/** Picks the raw or simple return type for a format (a union of formats gives a union of types). */
+export type Formatted<Fmt extends ResponseFormat, Raw, Simple> = Fmt extends "simple" ? Simple : Raw;
 
 /** Query string values. `undefined` and empty strings are dropped. */
 export type QueryValue = string | number | boolean | undefined;

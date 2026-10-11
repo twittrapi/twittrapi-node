@@ -1,3 +1,4 @@
+import { isSimplePage } from "./simple.js";
 import type { PageParams, RequestOptions } from "./types.js";
 
 /** Cursors found in a raw X timeline response. */
@@ -120,15 +121,22 @@ export function countTimelineEntries(data: unknown): { items: number; cursors: n
   return { items, cursors };
 }
 
+function simpleNextCursor(page: { nextCursor: unknown; hasNextPage: boolean }): string | undefined {
+  return page.hasNextPage && typeof page.nextCursor === "string" && page.nextCursor ? page.nextCursor : undefined;
+}
+
 /** One page yielded by {@link paginate}. */
 export interface Page<T> {
-  /** Raw JSON of this page. */
+  /** JSON of this page (raw, or the simple-format envelope when the format is "simple"). */
   data: T;
   /** 1-based page number within this iteration. */
   pageNumber: number;
   /** Cursor used to request this page (undefined for the first page unless one was passed in). */
   cursor: string | undefined;
-  /** Bottom cursor found in this page, or undefined if none was found. */
+  /**
+   * Cursor of the next page, or undefined if there is none. Raw format: the bottom cursor found in
+   * the page. Simple format: `nextCursor` when `hasNextPage` is true.
+   */
   nextCursor: string | undefined;
 }
 
@@ -142,19 +150,23 @@ export interface PaginateOptions extends RequestOptions {
 
 export const DEFAULT_MAX_PAGES = 10;
 
-/** A method that takes page params and returns one page of raw JSON. */
+/** A method that takes page params and returns one page of JSON. */
 export type PageMethod<P extends PageParams, T> = (params: P, options?: RequestOptions) => Promise<T>;
 
 /**
- * Calls `method` repeatedly, following the bottom cursor of each response.
+ * Calls `method` repeatedly, following the cursor of each response.
  *
- * Stops when any of these is true:
+ * Simple-format pages (`{ data, nextCursor, hasNextPage }`) are followed by `nextCursor` until
+ * `hasNextPage` is false; the API already ends those on empty pages and repeated cursors. Pass
+ * `{ format: "simple" }` in the options, or use a client created with `format: "simple"`.
+ *
+ * Raw pages stop when any of these is true:
  * - `maxPages` pages have been fetched (default 10),
  * - no bottom cursor is found,
  * - the cursor repeats,
  * - a page contains timeline entries but none of them are results (only cursors).
  *
- * Best-effort: cursor detection relies on X's raw timeline JSON, which X can change at any time.
+ * Raw cursor detection is best-effort: it relies on X's timeline JSON, which X can change at any time.
  */
 export async function* paginate<P extends PageParams, T>(
   method: PageMethod<P, T>,
@@ -169,12 +181,15 @@ export async function* paginate<P extends PageParams, T>(
 
   for (let pageNumber = 1; pageNumber <= maxPages; pageNumber++) {
     const data = await method({ ...params, cursor }, requestOptions);
-    const nextCursor = extractBottomCursor(data);
+    const simple = isSimplePage(data);
+    const nextCursor = simple ? simpleNextCursor(data) : extractBottomCursor(data);
     yield { data, pageNumber, cursor, nextCursor };
 
     if (!nextCursor || seen.has(nextCursor)) return;
-    const { items, cursors } = countTimelineEntries(data);
-    if (items === 0 && cursors > 0) return;
+    if (!simple) {
+      const { items, cursors } = countTimelineEntries(data);
+      if (items === 0 && cursors > 0) return;
+    }
     seen.add(nextCursor);
     cursor = nextCursor;
   }

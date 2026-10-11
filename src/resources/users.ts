@@ -2,13 +2,19 @@ import { ValidationError } from "../errors.js";
 import type {
   PageParams,
   RequestOptions,
+  ResponseFormat,
+  SimpleTweetsPage,
+  SimpleUserResponse,
+  SimpleUsernameToIdResponse,
+  SimpleUsersPage,
+  SimpleUsersResponse,
   TimelineResponse,
   UserResponse,
   UsernameToIdResponse,
   UsersResponse,
   UserTarget,
 } from "../types.js";
-import { APIResource, cleanUsername, enc, numericId, pageQuery, resolveUserTarget } from "./shared.js";
+import { APIResource, cleanUsername, formatMethod, enc, numericId, pageQuery, resolveUserTarget } from "./shared.js";
 
 /** Params for user timelines and follower lists: a user (by ID or handle) plus paging. */
 export type UserPageParams = UserTarget & PageParams;
@@ -16,21 +22,24 @@ export type UserPageParams = UserTarget & PageParams;
 export const MAX_USERS_PER_REQUEST = 100;
 
 /** User profiles, timelines and follower graphs. */
-export class Users extends APIResource {
+export class Users<F extends ResponseFormat = "raw"> extends APIResource<F> {
   /** Gets a profile by handle (a leading @ is fine). Includes the numeric user ID (rest_id). */
-  getByUsername = async (username: string, options?: RequestOptions): Promise<UserResponse> =>
-    this.client.get({ path: `/user/by/username/${enc(cleanUsername(username))}` }, options);
+  getByUsername = formatMethod<F, string, UserResponse, SimpleUserResponse>(async (username, options) =>
+    this.client.get({ path: `/user/by/username/${enc(cleanUsername(username))}` }, options),
+  );
 
   /** Gets a profile by numeric user ID. */
-  getById = async (userId: string, options?: RequestOptions): Promise<UserResponse> =>
-    this.client.get({ path: `/user/${numericId("userId", userId)}` }, options);
+  getById = formatMethod<F, string, UserResponse, SimpleUserResponse>(async (userId, options) =>
+    this.client.get({ path: `/user/${numericId("userId", userId)}` }, options),
+  );
 
   /** Resolves a handle to its numeric user ID. Smaller and cheaper than getByUsername. */
-  usernameToId = async (username: string, options?: RequestOptions): Promise<UsernameToIdResponse> =>
-    this.client.get({ path: `/username/to/id/${enc(cleanUsername(username))}` }, options);
+  usernameToId = formatMethod<F, string, UsernameToIdResponse, SimpleUsernameToIdResponse>(async (username, options) =>
+    this.client.get({ path: `/username/to/id/${enc(cleanUsername(username))}` }, options),
+  );
 
   /** Gets up to 100 profiles in one call by numeric user ID. */
-  getMany = async (userIds: readonly string[], options?: RequestOptions): Promise<UsersResponse> => {
+  getMany = formatMethod<F, readonly string[], UsersResponse, SimpleUsersResponse>(async (userIds, options) => {
     if (!Array.isArray(userIds) || userIds.length === 0) {
       throw new ValidationError("userIds must be a non-empty array");
     }
@@ -39,33 +48,39 @@ export class Users extends APIResource {
     }
     const ids = userIds.map((id, i) => numericId(`userIds[${i}]`, id));
     return this.client.get({ path: "/user/users/by/ids", query: { ids: ids.join(",") } }, options);
-  };
+  });
 
   /** A user's tweets (profile timeline without replies), newest first. Paginated. */
-  tweets = async (params: UserPageParams, options?: RequestOptions): Promise<TimelineResponse> =>
-    this.#timeline("tweets", params, options);
+  tweets = formatMethod<F, UserPageParams, TimelineResponse, SimpleTweetsPage>(async (params, options) =>
+    this.#timeline("tweets", params, options),
+  );
 
   /** A user's tweets including replies, newest first. Paginated. */
-  tweetsAndReplies = async (params: UserPageParams, options?: RequestOptions): Promise<TimelineResponse> =>
-    this.#timeline("tweetsAndReplies", params, options);
+  tweetsAndReplies = formatMethod<F, UserPageParams, TimelineResponse, SimpleTweetsPage>(async (params, options) =>
+    this.#timeline("tweetsAndReplies", params, options),
+  );
 
   /** A user's tweets that contain photos or videos. Paginated. */
-  media = async (params: UserPageParams, options?: RequestOptions): Promise<TimelineResponse> =>
-    this.#timeline("media", params, options);
+  media = formatMethod<F, UserPageParams, TimelineResponse, SimpleTweetsPage>(async (params, options) =>
+    this.#timeline("media", params, options),
+  );
 
   /** Accounts following a user, newest first. Paginated. */
-  followers = async (params: UserPageParams, options?: RequestOptions): Promise<TimelineResponse> =>
-    this.#timeline("followers", params, options);
+  followers = formatMethod<F, UserPageParams, TimelineResponse, SimpleUsersPage>(async (params, options) =>
+    this.#timeline("followers", params, options),
+  );
 
   /** Accounts a user follows. Paginated. */
-  following = async (params: UserPageParams, options?: RequestOptions): Promise<TimelineResponse> =>
-    this.#timeline("followings", params, options);
+  following = formatMethod<F, UserPageParams, TimelineResponse, SimpleUsersPage>(async (params, options) =>
+    this.#timeline("followings", params, options),
+  );
 
   /** A user's followers with a verified badge. Paginated. */
-  verifiedFollowers = async (params: UserPageParams, options?: RequestOptions): Promise<TimelineResponse> =>
-    this.#timeline("verifiedFollowers", params, options);
+  verifiedFollowers = formatMethod<F, UserPageParams, TimelineResponse, SimpleUsersPage>(async (params, options) =>
+    this.#timeline("verifiedFollowers", params, options),
+  );
 
-  #timeline(suffix: string, params: UserPageParams, options?: RequestOptions): Promise<TimelineResponse> {
+  #timeline(suffix: string, params: UserPageParams, options?: RequestOptions): Promise<unknown> {
     const { id, query } = resolveUserTarget(params);
     return this.client.get({ path: `/user/${id}/${suffix}`, query: { ...query, ...pageQuery(params) } }, options);
   }

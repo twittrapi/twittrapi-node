@@ -76,6 +76,7 @@ new TwittrAPI({
   timeoutMs: 60_000,     // per attempt
   maxRetries: 2,         // for 429, 5xx, timeouts and network errors
   fetch: customFetch,    // any fetch-compatible function
+  format: "raw",         // "raw" (default) or "simple", see Response format
 });
 ```
 
@@ -85,6 +86,39 @@ Every method also takes request options as its last argument:
 const controller = new AbortController();
 await client.users.getById("12", { signal: controller.signal, timeoutMs: 10_000, maxRetries: 0 });
 ```
+
+## Response format
+
+By default every method returns X's raw JSON, unchanged. The API can also return the
+[simple format](https://twittrapi.com/docs/simple-format): flat camelCase tweets, users, lists,
+communities and trends with a fixed schema, about 60 % smaller. Same price, same parameters.
+
+Set it for the whole client, or per call with `{ format }` (the per-call option wins):
+
+```ts
+import { TwittrAPI, isUnavailableTweet } from "twittrapi";
+
+const client = new TwittrAPI({ format: "simple" });
+
+const { data: user } = await client.users.getByUsername("XDevelopers"); // SimpleUser | null
+console.log(user?.username, user?.counts.followers);
+
+const page = await client.users.tweets({ username: "XDevelopers" }); // SimplePage<SimpleTweet | ...>
+for (const tweet of page.data) {
+  if (isUnavailableTweet(tweet)) continue; // { id, unavailable: true } for deleted or withheld tweets
+  console.log(tweet.createdAt, tweet.text, tweet.counts.likes);
+}
+if (page.hasNextPage) await client.users.tweets({ username: "XDevelopers", cursor: page.nextCursor! });
+
+// Raw JSON for one call on a simple client, or simple for one call on a raw client:
+await client.users.tweets({ userId: "12" }, { format: "raw" });
+await new TwittrAPI().users.getById("12", { format: "simple" });
+```
+
+The return types follow the format: `SimpleTweet`, `SimpleUser`, `SimpleList`, `SimpleCommunity`,
+`SimpleTrend` and `SimpleTrendLocation`, wrapped in `SimplePage<T>` (`data`, `nextCursor`,
+`previousCursor`, `hasNextPage`) for lists or `SimpleSingle<T>` (`data`) for single objects.
+`format=simple` is added to the query string only when the simple format is selected.
 
 ## Usage
 
@@ -167,7 +201,8 @@ const data = await client.get({ path: "/some/endpoint", query: { foo: "bar" } })
 ## Pagination
 
 `client.paginate()` calls a paginated method repeatedly and follows the bottom cursor in each
-response. It yields one page at a time:
+response (or `nextCursor` until `hasNextPage` is false in the simple format). It yields one page at
+a time:
 
 ```ts
 for await (const page of client.paginate(
@@ -176,9 +211,13 @@ for await (const page of client.paginate(
   { maxPages: 5 },
 )) {
   console.log(page.pageNumber, page.nextCursor);
-  // page.data is the raw JSON of this page
+  // page.data is the JSON of this page (raw, or SimplePage on a simple client)
 }
 ```
+
+Pass `{ format: "simple" }` in the third argument to paginate in the simple format on a raw client.
+The page type is inferred from the client's default format, so for typed simple pages create the
+client with `format: "simple"`.
 
 Every page is a billed request, so `maxPages` defaults to 10. Pass `Infinity` to fetch until the
 cursor runs out. Iteration also stops when no bottom cursor is found, when the cursor repeats, or

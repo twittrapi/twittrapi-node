@@ -1,5 +1,13 @@
-import type { PageParams, RequestOptions, TimelineResponse, TweetResponse } from "../types.js";
-import { APIResource, numericId, oneOf, pageQuery } from "./shared.js";
+import type {
+  PageParams,
+  RequestOptions,
+  ResponseFormat,
+  SimpleTweetsPage,
+  SimpleUsersPage,
+  TimelineResponse,
+  TweetResponse,
+} from "../types.js";
+import { APIResource, formatMethod, numericId, oneOf, pageQuery } from "./shared.js";
 
 export type RankingMode = "Relevance" | "Recency" | "Likes";
 const RANKING_MODES: readonly RankingMode[] = ["Relevance", "Recency", "Likes"];
@@ -17,12 +25,13 @@ export interface TweetPageParams extends PageParams {
 }
 
 /** Single tweets and their engagement. */
-export class Tweets extends APIResource {
+export class Tweets<F extends ResponseFormat = "raw"> extends APIResource<F> {
   /**
    * Gets a tweet with author, media, counts and the reply thread. Accepts the tweet ID or params.
-   * Paginated (the cursor loads more replies).
+   * Paginated (the cursor loads more replies). In the simple format `data` lists the tweet and its
+   * replies in display order.
    */
-  get = async (params: string | TweetGetParams, options?: RequestOptions): Promise<TweetResponse> => {
+  get = formatMethod<F, string | TweetGetParams, TweetResponse, SimpleTweetsPage>(async (params, options) => {
     const p: TweetGetParams = typeof params === "string" ? { tweetId: params } : params;
     return this.client.get(
       {
@@ -31,21 +40,24 @@ export class Tweets extends APIResource {
       },
       options,
     );
-  };
+  });
 
   /** Users who retweeted a tweet. Paginated. */
-  retweeters = async (params: TweetPageParams, options?: RequestOptions): Promise<TimelineResponse> =>
-    this.#list("retweets", params, options);
+  retweeters = formatMethod<F, TweetPageParams, TimelineResponse, SimpleUsersPage>(async (params, options) =>
+    this.#list("retweets", params, options),
+  );
 
   /** Users who liked a tweet. X hides likers for many tweets, so this can be empty. Paginated. */
-  likers = async (params: TweetPageParams, options?: RequestOptions): Promise<TimelineResponse> =>
-    this.#list("favorites", params, options);
+  likers = formatMethod<F, TweetPageParams, TimelineResponse, SimpleUsersPage>(async (params, options) =>
+    this.#list("favorites", params, options),
+  );
 
   /** Tweets quoting a tweet. Paginated. */
-  quotes = async (params: TweetPageParams, options?: RequestOptions): Promise<TimelineResponse> =>
-    this.#list("quotes", params, options);
+  quotes = formatMethod<F, TweetPageParams, TimelineResponse, SimpleTweetsPage>(async (params, options) =>
+    this.#list("quotes", params, options),
+  );
 
-  #list(suffix: string, params: TweetPageParams, options?: RequestOptions): Promise<TimelineResponse> {
+  #list(suffix: string, params: TweetPageParams, options?: RequestOptions): Promise<unknown> {
     return this.client.get(
       { path: `/tweet/${numericId("tweetId", params?.tweetId)}/${suffix}`, query: pageQuery(params) },
       options,

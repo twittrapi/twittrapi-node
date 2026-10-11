@@ -1,14 +1,49 @@
 import type { TwittrAPI } from "../client.js";
 import { ValidationError } from "../errors.js";
-import type { PageParams, QueryValue, UserTarget } from "../types.js";
+import type { Formatted, PageParams, QueryValue, RequestOptions, ResponseFormat, UserTarget } from "../types.js";
 
-/** Base class for resource namespaces (client.users, client.tweets, ...). */
-export abstract class APIResource {
-  protected readonly client: TwittrAPI;
+/** Base class for resource namespaces (client.users, client.tweets, ...). F is the client's default format. */
+export abstract class APIResource<F extends ResponseFormat = "raw"> {
+  protected readonly client: TwittrAPI<F>;
 
-  constructor(client: TwittrAPI) {
+  constructor(client: TwittrAPI<F>) {
     this.client = client;
   }
+}
+
+type SimpleOptions = RequestOptions & { format: "simple" };
+type RawOptions = RequestOptions & { format: "raw" };
+
+/**
+ * A resource method whose return type follows the response format: `{ format: "simple" }` in the
+ * options gives Simple, `{ format: "raw" }` gives Raw, and no format gives the client default F.
+ * The default-format signature is last, so `client.paginate(method, ...)` infers its page type.
+ */
+export interface FormatMethod<F extends ResponseFormat, P, Raw, Simple> {
+  (params: P, options: SimpleOptions): Promise<Simple>;
+  (params: P, options: RawOptions): Promise<Raw>;
+  (params: P, options?: RequestOptions): Promise<Formatted<F, Raw, Simple>>;
+}
+
+/** Like FormatMethod, for methods whose first argument is optional. */
+export interface FormatMethodOptionalParams<F extends ResponseFormat, P, Raw, Simple> {
+  (params: P | undefined, options: SimpleOptions): Promise<Simple>;
+  (params: P | undefined, options: RawOptions): Promise<Raw>;
+  (params?: P, options?: RequestOptions): Promise<Formatted<F, Raw, Simple>>;
+}
+
+/** Like FormatMethod, for methods that take only options. */
+export interface FormatMethodNoParams<F extends ResponseFormat, Raw, Simple> {
+  (options: SimpleOptions): Promise<Simple>;
+  (options: RawOptions): Promise<Raw>;
+  (options?: RequestOptions): Promise<Formatted<F, Raw, Simple>>;
+}
+
+/** Types an implementation as a FormatMethod. The response type is chosen by the API, not here. */
+export function formatMethod<F extends ResponseFormat, P, Raw, Simple>(
+  fn: (params: P, options?: RequestOptions) => Promise<unknown>,
+): FormatMethod<F, P, Raw, Simple> {
+  return fn as FormatMethod<F, P, Raw, Simple>;
 }
 
 const NUMERIC_ID = /^\d{1,30}$/;

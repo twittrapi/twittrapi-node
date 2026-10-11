@@ -14,7 +14,7 @@ import { Search } from "./resources/search.js";
 import { Trends } from "./resources/trends.js";
 import { Tweets } from "./resources/tweets.js";
 import { Users } from "./resources/users.js";
-import type { PageParams, QueryValue, RawResponse, RequestOptions } from "./types.js";
+import type { PageParams, QueryValue, RawResponse, RequestOptions, ResponseFormat } from "./types.js";
 import { VERSION } from "./version.js";
 
 export const DEFAULT_BASE_URL = "https://api.twittrapi.com";
@@ -28,7 +28,9 @@ const MAX_RETRY_AFTER_MS = 60_000;
 
 export type AuthMode = "direct" | "rapidapi";
 
-export interface ClientOptions {
+export const RESPONSE_FORMATS: readonly ResponseFormat[] = ["raw", "simple"];
+
+export interface ClientOptions<F extends ResponseFormat = "raw"> {
   /** TwittrAPI key, sent as X-API-KEY. Defaults to the TWITTRAPI_API_KEY environment variable. */
   apiKey?: string;
   /**
@@ -49,6 +51,12 @@ export interface ClientOptions {
   retryDelayMs?: number;
   /** Custom fetch implementation. Defaults to the global fetch (Node 18+). */
   fetch?: typeof fetch;
+  /**
+   * Default response format. "raw" (default) returns X's JSON unchanged. "simple" adds
+   * `format=simple` to every request and returns small, typed objects (see SimpleTweet, SimpleUser,
+   * SimplePage). Override per call with `{ format }` in the request options.
+   */
+  format?: F;
 }
 
 /** A GET request against the API. */
@@ -70,6 +78,14 @@ function nonNegativeInt(name: string, value: number | undefined, fallback: numbe
     throw new ValidationError(`${name} must be a non-negative integer`);
   }
   return value;
+}
+
+function responseFormat(value: unknown, fallback: ResponseFormat): ResponseFormat {
+  if (value === undefined) return fallback;
+  if (!RESPONSE_FORMATS.includes(value as ResponseFormat)) {
+    throw new ValidationError(`format must be one of ${RESPONSE_FORMATS.join(", ")}`);
+  }
+  return value as ResponseFormat;
 }
 
 function positiveNumber(name: string, value: number | undefined, fallback: number): number {
@@ -115,26 +131,32 @@ function isRetryableStatus(status: number): boolean {
  * ```ts
  * const client = new TwittrAPI({ apiKey: process.env.TWITTRAPI_API_KEY });
  * const user = await client.users.getByUsername("jack");
+ *
+ * // Compact, typed responses:
+ * const simple = new TwittrAPI({ format: "simple" });
+ * const { data } = await simple.users.getByUsername("jack"); // SimpleUser | null
  * ```
  */
-export class TwittrAPI {
+export class TwittrAPI<F extends ResponseFormat = "raw"> {
   readonly authMode: AuthMode;
   readonly baseUrl: string;
   readonly timeoutMs: number;
   readonly maxRetries: number;
   readonly retryDelayMs: number;
+  /** Default response format of this client. */
+  readonly format: F;
 
-  readonly users: Users;
-  readonly tweets: Tweets;
-  readonly search: Search;
-  readonly lists: Lists;
-  readonly communities: Communities;
-  readonly trends: Trends;
+  readonly users: Users<F>;
+  readonly tweets: Tweets<F>;
+  readonly search: Search<F>;
+  readonly lists: Lists<F>;
+  readonly communities: Communities<F>;
+  readonly trends: Trends<F>;
 
   readonly #apiKey: string;
   readonly #fetch: typeof fetch;
 
-  constructor(options: ClientOptions = {}) {
+  constructor(options: ClientOptions<F> = {}) {
     const explicitDirect = options.apiKey?.trim();
     const explicitRapid = options.rapidApiKey?.trim();
     let mode: AuthMode;
@@ -158,6 +180,7 @@ export class TwittrAPI {
     this.timeoutMs = positiveNumber("timeoutMs", options.timeoutMs, DEFAULT_TIMEOUT_MS);
     this.maxRetries = nonNegativeInt("maxRetries", options.maxRetries, DEFAULT_MAX_RETRIES);
     this.retryDelayMs = nonNegativeInt("retryDelayMs", options.retryDelayMs, DEFAULT_RETRY_DELAY_MS);
+    this.format = responseFormat(options.format, "raw") as F;
 
     const f = options.fetch ?? (globalThis.fetch as typeof fetch | undefined);
     if (typeof f !== "function") {
@@ -189,7 +212,8 @@ export class TwittrAPI {
   }
 
   /**
-   * Iterates over pages of a paginated method by following the bottom cursor.
+   * Iterates over pages of a paginated method by following the bottom cursor (raw format) or
+   * `nextCursor` / `hasNextPage` (simple format).
    *
    * ```ts
    * for await (const page of client.paginate(client.users.followers, { username: "jack" }, { maxPages: 5 })) {
@@ -211,9 +235,13 @@ export class TwittrAPI {
    * Sends a GET request and returns the parsed JSON. Retries 429, 5xx, timeouts and network errors
    * with exponential backoff (honouring Retry-After on 429). Used by all resource methods; also
    * usable directly for endpoints this SDK does not wrap yet.
+   *
+   * Adds `format=simple` to the query when the call's (or else the client's) format is "simple".
    */
   async get<T = RawResponse>(req: APIRequest, options: RequestOptions = {}): Promise<T> {
-    const url = buildUrl(this.baseUrl, req);
+    const format = responseFormat(options.format, this.format);
+    const query = format === "simple" ? { ...req.query, format: "simple" } : req.query;
+    const url = buildUrl(this.baseUrl, { ...req, query });
     const maxRetries = nonNegativeInt("maxRetries", options.maxRetries, this.maxRetries);
     const timeoutMs = positiveNumber("timeoutMs", options.timeoutMs, this.timeoutMs);
     const signal = options.signal;

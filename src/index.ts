@@ -6,6 +6,7 @@ export {
   DEFAULT_TIMEOUT_MS,
   RAPIDAPI_BASE_URL,
   RAPIDAPI_HOST,
+  RESPONSE_FORMATS,
   type APIRequest,
   type AuthMode,
   type ClientOptions,
@@ -35,6 +36,27 @@ export {
   type PageMethod,
   type PaginateOptions,
 } from "./pagination.js";
+export {
+  isSimplePage,
+  isUnavailableTweet,
+  type SimpleArticle,
+  type SimpleCommunity,
+  type SimpleCommunityRule,
+  type SimpleList,
+  type SimpleMedia,
+  type SimplePage,
+  type SimpleReplyTo,
+  type SimpleSingle,
+  type SimpleTimelineTweet,
+  type SimpleTrend,
+  type SimpleTrendLocation,
+  type SimpleTweet,
+  type SimpleTweetCounts,
+  type SimpleUnavailableTweet,
+  type SimpleUser,
+  type SimpleUserCounts,
+  type SimpleUserRef,
+} from "./simple.js";
 export { Communities, type CommunityPageParams, type CommunitySearchParams } from "./resources/communities.js";
 export { Lists, type ListPageParams } from "./resources/lists.js";
 export { Search, type SearchCategory, type SearchTweetsParams } from "./resources/search.js";

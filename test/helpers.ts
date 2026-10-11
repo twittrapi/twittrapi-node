@@ -1,4 +1,5 @@
-import { TwittrAPI, type ClientOptions } from "../src/index.js";
+import { readFileSync } from "node:fs";
+import { TwittrAPI, type ClientOptions, type ResponseFormat } from "../src/index.js";
 
 export interface RecordedCall {
   url: URL;
@@ -37,9 +38,12 @@ export function json(body: unknown, status = 200, headers: Record<string, string
   });
 }
 
-export function makeClient(responses: Responder[] = [json({ ok: true })], options: ClientOptions = {}) {
+export function makeClient<F extends ResponseFormat = "raw">(
+  responses: Responder[] = [json({ ok: true })],
+  options: ClientOptions<F> = {},
+) {
   const mock = mockFetch(...responses);
-  const client = new TwittrAPI({ apiKey: "test-key", retryDelayMs: 0, fetch: mock.fetch, ...options });
+  const client = new TwittrAPI<F>({ apiKey: "test-key", retryDelayMs: 0, fetch: mock.fetch, ...options });
   return { client, calls: mock.calls };
 }
 
@@ -60,4 +64,13 @@ export function timeline(ids: string[], bottom?: string, top = "top-cursor") {
       },
     },
   };
+}
+
+/**
+ * Simple-format response bodies from test/fixtures/simple, copied from the API's normalize testdata
+ * (twitter-ts go/internal/normalize/testdata/simple): real captures converted by the API's own code.
+ */
+export function simpleFixture<T = unknown>(name: string): T {
+  const url = new URL(`../../test/fixtures/simple/${name}.json`, import.meta.url);
+  return JSON.parse(readFileSync(url, "utf8")) as T;
 }

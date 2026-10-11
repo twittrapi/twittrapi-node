@@ -1,5 +1,5 @@
-import type { PageParams, RequestOptions, SearchResponse } from "../types.js";
-import { APIResource, nonEmpty, oneOf, pageQuery } from "./shared.js";
+import type { PageParams, ResponseFormat, SearchResponse, SimpleSearchResponse } from "../types.js";
+import { APIResource, formatMethod, nonEmpty, oneOf, pageQuery } from "./shared.js";
 
 export type SearchCategory = "Top" | "Latest" | "People" | "Photos" | "Videos";
 const CATEGORIES: readonly SearchCategory[] = ["Top", "Latest", "People", "Photos", "Videos"];
@@ -12,9 +12,9 @@ export interface SearchTweetsParams extends PageParams {
 }
 
 /** Search, like the X search box. */
-export class Search extends APIResource {
+export class Search<F extends ResponseFormat = "raw"> extends APIResource<F> {
   /** Searches tweets (or people, with category "People"). Paginated. */
-  tweets = async (params: SearchTweetsParams, options?: RequestOptions): Promise<SearchResponse> =>
+  tweets = formatMethod<F, SearchTweetsParams, SearchResponse, SimpleSearchResponse>(async (params, options) =>
     this.client.get(
       {
         path: "/search",
@@ -25,5 +25,6 @@ export class Search extends APIResource {
         },
       },
       options,
-    );
+    ),
+  );
 }
