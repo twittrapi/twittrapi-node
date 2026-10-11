@@ -1,7 +1,7 @@
 {
   "name": "twittrapi",
   "version": "0.2.0",
-  "description": "Official Node.js and TypeScript SDK for TwittrAPI, a Twitter/X data API: profiles, tweets, followers, search, lists, communities and trends.",
+  "description": "Node.js and TypeScript SDK for TwittrAPI: read public Twitter/X tweets, profiles, followers and search results. Pay as you go from $0.065 per 1,000 calls.",
   "license": "MIT",
   "author": "TwittrAPI",
   "homepage": "https://twittrapi.com",
@@ -13,14 +13,17 @@
     "url": "https://github.com/twittrapi/twittrapi-node/issues"
   },
   "keywords": [
-    "twitter",
-    "x",
-    "twitter-api",
-    "x-api",
+    "twitter api",
+    "x api",
+    "twitter scraper",
     "tweets",
-    "followers",
-    "scraper",
-    "sdk"
+    "twitter search",
+    "twitter followers",
+    "social media data",
+    "twittrapi",
+    "sdk",
+    "nodejs",
+    "typescript"
   ],
   "type": "module",
   "main": "./dist/cjs/index.js",
