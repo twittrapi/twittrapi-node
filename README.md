@@ -1,11 +1,18 @@
+<p align="center">
+  <a href="https://twittrapi.com"><img src=".github/banner.png" alt="twittrapi-node: Node.js and TypeScript SDK for Twitter/X data, no runtime dependencies" width="100%"></a>
+</p>
+
 # twittrapi – Twitter/X API client for Node.js and TypeScript
 
 [![npm](https://img.shields.io/npm/v/twittrapi.svg)](https://www.npmjs.com/package/twittrapi) [![CI](https://github.com/twittrapi/twittrapi-node/actions/workflows/ci.yml/badge.svg)](https://github.com/twittrapi/twittrapi-node/actions)
+[![License: MIT](https://img.shields.io/badge/license-MIT-blue.svg)](LICENSE)
 
 Official Node.js and TypeScript SDK for [TwittrAPI](https://twittrapi.com), a REST API for public Twitter/X data:
 tweets, profiles, followers, search, lists and communities. From $0.065 per 1,000 calls, no X developer account.
 
-> **Get an API key:** [twittrapi.com/start](https://twittrapi.com/start?utm_source=github&utm_medium=readme&utm_campaign=twittrapi-node) · [Pricing](https://twittrapi.com/pricing?utm_source=github&utm_medium=readme&utm_campaign=twittrapi-node) · [Docs](https://twittrapi.com/docs?utm_source=github&utm_medium=readme&utm_campaign=twittrapi-node) · also available on [RapidAPI](https://rapidapi.com/viperscores-viperscores-default/api/twitter-aio)
+> **Get an API key:** [twittrapi.com/start](https://twittrapi.com/start?utm_source=github&utm_medium=readme&utm_campaign=twittrapi-node) · [Pricing](https://twittrapi.com/pricing?utm_source=github&utm_medium=readme&utm_campaign=twittrapi-node) · [Docs](https://twittrapi.com/docs?utm_source=github&utm_medium=readme&utm_campaign=twittrapi-node) · [Status](https://twittrapi.com/status) · also available on [RapidAPI](https://rapidapi.com/viperscores-viperscores-default/api/twitter-aio)
+
+**SDKs and integrations:** [Python](https://github.com/twittrapi/twittrapi-python) · [Go](https://github.com/twittrapi/twittrapi-go) · [MCP server](https://github.com/twittrapi/twittrapi-mcp) · [n8n](https://github.com/twittrapi/n8n-nodes-twittrapi) · [Make](https://github.com/twittrapi/twittrapi-make) · [Apify](https://github.com/twittrapi/twittrapi-apify) · [LangChain](https://github.com/twittrapi/langchain-twittrapi) · [LlamaIndex](https://github.com/twittrapi/llama-index-tools-twittrapi) · [Agent skill](https://github.com/twittrapi/twittrapi-skills) · [Examples](https://github.com/twittrapi/twittrapi-examples)
 
 - No runtime dependencies. Uses the built-in `fetch` (Node 18+).
 - ESM and CommonJS, with type declarations.
