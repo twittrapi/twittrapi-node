@@ -154,8 +154,19 @@ await client.users.verifiedFollowers({ userId: "12" });
 await client.tweets.get("20"); // tweet plus reply thread
 await client.tweets.get({ tweetId: "20", rankingMode: "Recency" }); // Relevance | Recency | Likes
 await client.tweets.retweeters({ tweetId: "20" });
-await client.tweets.likers({ tweetId: "20" }); // X hides likers for many tweets; may be empty
 await client.tweets.quotes({ tweetId: "20" });
+```
+
+`likers` works only for your own tweets: X shows who liked a tweet only to its author. Pass the
+cookie of the account that posted the tweet (with `auth_token` and `ct0`) and a proxy; the SDK
+sends them as a POST body. For anyone else's tweet the list is empty.
+
+```ts
+await client.tweets.likers({
+  tweetId: "20",
+  cookie: process.env.X_COOKIE!, // "auth_token=...; ct0=..."
+  proxy: "http://user:pass@host:port",
+});
 ```
 
 ### Search
@@ -199,7 +210,8 @@ await client.trends.locations();          // all locations with their WOEIDs
 
 ### Endpoints not wrapped yet
 
-`client.get()` sends an authenticated GET with the same retries and error handling:
+`client.get()` sends an authenticated GET with the same retries and error handling, and
+`client.post()` the same with a JSON body:
 
 ```ts
 const data = await client.get({ path: "/some/endpoint", query: { foo: "bar" } });

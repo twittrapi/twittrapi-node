@@ -91,6 +91,19 @@ describe("pagination", () => {
     assert.ok(calls.every((c) => c.url.pathname === "/user/-1/followers" && c.url.searchParams.get("count") === "2"));
   });
 
+  it("sends the likers cursor in the POST body", async () => {
+    const { client, calls } = makeClient([json(timeline(["1"], "c1")), json(timeline(["2"]))]);
+    const params = { tweetId: "20", cookie: "auth_token=a; ct0=b", proxy: "http://u:p@h:1", count: 50 };
+    for await (const _ of client.paginate(client.tweets.likers, params)) void _;
+    assert.equal(calls.length, 2);
+    assert.ok(calls.every((c) => c.method === "POST" && c.url.search === ""));
+    assert.deepEqual(
+      calls.map((c) => JSON.parse(c.body!).cursor),
+      [undefined, "c1"],
+    );
+    assert.ok(calls.every((c) => JSON.parse(c.body!).count === 50));
+  });
+
   it("stops at maxPages", async () => {
     let n = 0;
     const { client, calls } = makeClient([() => json(timeline([String(++n)], `c${n}`))]);

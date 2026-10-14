@@ -8,7 +8,12 @@ type Case = {
   call: (c: TwittrAPI) => Promise<unknown>;
   path: string;
   query?: Record<string, string>;
+  /** Expected JSON body; the request must then be a POST. */
+  body?: Record<string, unknown>;
 };
+
+const COOKIE = "auth_token=a; ct0=b";
+const PROXY = "http://user:pass@1.2.3.4:8080";
 
 const cases: Case[] = [
   // users
@@ -66,7 +71,18 @@ const cases: Case[] = [
     path: "/tweet/20/retweets",
     query: { count: "40" },
   },
-  { name: "tweets.likers", call: (c) => c.tweets.likers({ tweetId: "20" }), path: "/tweet/20/favorites" },
+  {
+    name: "tweets.likers",
+    call: (c) => c.tweets.likers({ tweetId: "20", cookie: COOKIE, proxy: PROXY }),
+    path: "/tweet/20/favorites",
+    body: { cookie: COOKIE, proxy: PROXY },
+  },
+  {
+    name: "tweets.likers with paging",
+    call: (c) => c.tweets.likers({ tweetId: "20", cookie: COOKIE, proxy: PROXY, count: 100, cursor: "l" }),
+    path: "/tweet/20/favorites",
+    body: { cookie: COOKIE, proxy: PROXY, count: 100, cursor: "l" },
+  },
   { name: "tweets.quotes", call: (c) => c.tweets.quotes({ tweetId: "20", cursor: "q" }), path: "/tweet/20/quotes", query: { cursor: "q" } },
   // search
   {
@@ -118,6 +134,14 @@ describe("resource methods build the right request", () => {
       // compare the raw (still-encoded) path
       assert.equal(url.pathname, tc.path);
       assert.deepEqual(Object.fromEntries(url.searchParams), tc.query ?? {});
+      if (tc.body) {
+        assert.equal(calls[0]!.method, "POST");
+        assert.equal(calls[0]!.headers["content-type"], "application/json");
+        assert.deepEqual(JSON.parse(calls[0]!.body!), tc.body);
+      } else {
+        assert.equal(calls[0]!.method, "GET");
+        assert.equal(calls[0]!.body, undefined);
+      }
     });
   }
 
@@ -139,6 +163,11 @@ describe("argument validation (no request is sent)", () => {
     ["count 101", (c) => c.users.followers({ userId: "1", count: 101 })],
     ["count 1.5", (c) => c.users.followers({ userId: "1", count: 1.5 })],
     ["bad tweetId", (c) => c.tweets.get("12a")],
+    ["likers bad tweetId", (c) => c.tweets.likers({ tweetId: "12a", cookie: COOKIE, proxy: PROXY })],
+    ["likers empty cookie", (c) => c.tweets.likers({ tweetId: "1", cookie: " ", proxy: PROXY })],
+    ["likers empty proxy", (c) => c.tweets.likers({ tweetId: "1", cookie: COOKIE, proxy: "" })],
+    ["likers without cookie", (c) => c.tweets.likers({ tweetId: "1", proxy: PROXY } as never)],
+    ["likers count 101", (c) => c.tweets.likers({ tweetId: "1", cookie: COOKIE, proxy: PROXY, count: 101 })],
     ["bad rankingMode", (c) => c.tweets.get({ tweetId: "1", rankingMode: "Hot" as never })],
     ["empty search", (c) => c.search.tweets({ query: " " })],
     ["bad category", (c) => c.search.tweets({ query: "x", category: "Media" as never })],

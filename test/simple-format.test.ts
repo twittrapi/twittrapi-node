@@ -114,7 +114,7 @@ describe("simple format: request", () => {
     await client.users.verifiedFollowers({ userId: "12" });
     await client.tweets.get("1");
     await client.tweets.retweeters({ tweetId: "1" });
-    await client.tweets.likers({ tweetId: "1" });
+    await client.tweets.likers({ tweetId: "1", cookie: "auth_token=a; ct0=b", proxy: "http://u:p@h:1" });
     await client.tweets.quotes({ tweetId: "1" });
     await client.search.tweets({ query: "x", category: "People" });
     await client.lists.details("5");
@@ -331,7 +331,8 @@ describe("simple format: pagination", () => {
 
   it("stops on the API's empty last page (likes / favorites)", async () => {
     const { client, calls } = makeClient([json(simpleFixture("tweet-tweetid-favorites"))], { format: "simple" });
-    for await (const _ of client.paginate(client.tweets.likers, { tweetId: "1" }, { maxPages: 5 })) void _;
+    const params = { tweetId: "1", cookie: "auth_token=a; ct0=b", proxy: "http://u:p@h:1" };
+    for await (const _ of client.paginate(client.tweets.likers, params, { maxPages: 5 })) void _;
     assert.equal(calls.length, 1);
   });
 

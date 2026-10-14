@@ -102,7 +102,11 @@ describe("live fixtures: paginate", () => {
   it("stops after one page on empty favorites", async () => {
     const { client, calls } = makeClient([json(live("tweet-tweetid-favorites"))]);
     const pages = [];
-    for await (const p of client.paginate(client.tweets.likers, { tweetId: "2019881223666233717" }, { maxPages: 5 })) {
+    for await (const p of client.paginate(
+      client.tweets.likers,
+      { tweetId: "2019881223666233717", cookie: "auth_token=a; ct0=b", proxy: "http://u:p@h:1" },
+      { maxPages: 5 },
+    )) {
       pages.push(p);
     }
     assert.equal(pages.length, 1);

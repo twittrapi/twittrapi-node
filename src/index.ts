@@ -7,6 +7,7 @@ export {
   RAPIDAPI_BASE_URL,
   RAPIDAPI_HOST,
   RESPONSE_FORMATS,
+  type APIPostRequest,
   type APIRequest,
   type AuthMode,
   type ClientOptions,
@@ -61,7 +62,13 @@ export { Communities, type CommunityPageParams, type CommunitySearchParams } fro
 export { Lists, type ListPageParams } from "./resources/lists.js";
 export { Search, type SearchCategory, type SearchTweetsParams } from "./resources/search.js";
 export { Trends, WOEID } from "./resources/trends.js";
-export { Tweets, type RankingMode, type TweetGetParams, type TweetPageParams } from "./resources/tweets.js";
+export {
+  Tweets,
+  type RankingMode,
+  type TweetGetParams,
+  type TweetLikersParams,
+  type TweetPageParams,
+} from "./resources/tweets.js";
 export { MAX_USERS_PER_REQUEST, Users, type UserPageParams } from "./resources/users.js";
 export type * from "./types.js";
 export { VERSION } from "./version.js";

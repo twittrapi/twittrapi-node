@@ -6,6 +6,21 @@ All notable changes to this package are listed here. The format follows
 
 ## [Unreleased]
 
+## [0.3.0] - 2026-10-14
+
+### Changed
+
+- **Breaking:** `tweets.likers` now sends POST with a JSON body and requires `cookie` (the Cookie
+  header of the account that posted the tweet, with `auth_token` and `ct0`) and `proxy`
+  (`http://user:pass@host:port`). `count` and `cursor` go in the body; `paginate()` works as
+  before. X shows likers only to the tweet's author, so this works only for your own tweets. The
+  API now answers a GET, or a body without cookie or proxy, with 400.
+
+### Added
+
+- `client.post()` for POST endpoints, with the same retries and error handling as `client.get()`.
+- `TweetLikersParams` and `APIPostRequest` types.
+
 ## [0.2.1] - 2026-10-14
 
 ### Changed
@@ -54,7 +69,8 @@ Non-breaking: the default stays the raw format, and existing calls send the same
 - `client.paginate()` async iterator that follows X's bottom cursor, plus `extractCursors()`.
 - ESM and CommonJS builds with type declarations. No runtime dependencies.
 
-[Unreleased]: https://github.com/twittrapi/twittrapi-node/compare/v0.2.1...HEAD
+[Unreleased]: https://github.com/twittrapi/twittrapi-node/compare/v0.3.0...HEAD
+[0.3.0]: https://github.com/twittrapi/twittrapi-node/compare/v0.2.1...v0.3.0
 [0.2.1]: https://github.com/twittrapi/twittrapi-node/compare/v0.2.0...v0.2.1
 [0.2.0]: https://github.com/twittrapi/twittrapi-node/compare/v0.1.0...v0.2.0
 [0.1.0]: https://github.com/twittrapi/twittrapi-node/releases/tag/v0.1.0

@@ -5,6 +5,8 @@ export interface RecordedCall {
   url: URL;
   headers: Record<string, string>;
   method: string | undefined;
+  /** Request body as sent (a JSON string for POST). */
+  body: string | undefined;
   signal: AbortSignal | undefined;
 }
 
@@ -20,6 +22,7 @@ export function mockFetch(...responses: Responder[]) {
       url: new URL(String(input)),
       headers,
       method: init?.method,
+      body: typeof init?.body === "string" ? init.body : undefined,
       signal: init?.signal ?? undefined,
     };
     calls.push(call);

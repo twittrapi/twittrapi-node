@@ -66,6 +66,12 @@ export interface APIRequest {
   query?: Record<string, QueryValue>;
 }
 
+/** A POST request against the API: a path and query like APIRequest, plus a JSON body. */
+export interface APIPostRequest extends APIRequest {
+  /** Sent as JSON. Undefined values are dropped. */
+  body: Record<string, unknown>;
+}
+
 function readEnv(name: string): string | undefined {
   if (typeof process === "undefined" || !process.env) return undefined;
   const v = process.env[name]?.trim();
@@ -239,6 +245,23 @@ export class TwittrAPI<F extends ResponseFormat = "raw"> {
    * Adds `format=simple` to the query when the call's (or else the client's) format is "simple".
    */
   async get<T = RawResponse>(req: APIRequest, options: RequestOptions = {}): Promise<T> {
+    return this.#request<T>("GET", req, undefined, options);
+  }
+
+  /**
+   * Sends a POST request with a JSON body and returns the parsed JSON. Same retries, error handling
+   * and `format=simple` query as {@link get}. Used by endpoints that take credentials in the body.
+   */
+  async post<T = RawResponse>(req: APIPostRequest, options: RequestOptions = {}): Promise<T> {
+    return this.#request<T>("POST", req, JSON.stringify(req.body), options);
+  }
+
+  async #request<T>(
+    method: "GET" | "POST",
+    req: APIRequest,
+    payload: string | undefined,
+    options: RequestOptions,
+  ): Promise<T> {
     const format = responseFormat(options.format, this.format);
     const query = format === "simple" ? { ...req.query, format: "simple" } : req.query;
     const url = buildUrl(this.baseUrl, { ...req, query });
@@ -250,7 +273,7 @@ export class TwittrAPI<F extends ResponseFormat = "raw"> {
       if (signal?.aborted) throw signal.reason;
       let error: TwittrAPIError;
       try {
-        return await this.#attempt<T>(url, timeoutMs, signal);
+        return await this.#attempt<T>(method, url, payload, timeoutMs, signal);
       } catch (err) {
         if (!(err instanceof TwittrAPIError)) throw err; // user abort or unexpected error
         error = err;
@@ -271,7 +294,13 @@ export class TwittrAPI<F extends ResponseFormat = "raw"> {
     return base * (0.75 + Math.random() * 0.25);
   }
 
-  async #attempt<T>(url: string, timeoutMs: number, signal: AbortSignal | undefined): Promise<T> {
+  async #attempt<T>(
+    method: "GET" | "POST",
+    url: string,
+    payload: string | undefined,
+    timeoutMs: number,
+    signal: AbortSignal | undefined,
+  ): Promise<T> {
     const controller = new AbortController();
     let timedOut = false;
     const timer = setTimeout(() => {
@@ -284,7 +313,9 @@ export class TwittrAPI<F extends ResponseFormat = "raw"> {
     try {
       let res: Response;
       try {
-        res = await this.#fetch(url, { method: "GET", headers: this.buildHeaders(), signal: controller.signal });
+        const headers = this.buildHeaders();
+        if (payload !== undefined) headers["Content-Type"] = "application/json";
+        res = await this.#fetch(url, { method, headers, body: payload, signal: controller.signal });
       } catch (err) {
         if (signal?.aborted) throw signal.reason;
         if (timedOut) throw new TimeoutError(`Request timed out after ${timeoutMs} ms`, { cause: err });
