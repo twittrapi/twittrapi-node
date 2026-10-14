@@ -6,6 +6,12 @@ All notable changes to this package are listed here. The format follows
 
 ## [Unreleased]
 
+## [0.2.1] - 2026-10-14
+
+### Changed
+
+- `users.getMany` accepts up to 500 IDs per call (was 100), matching the API.
+
 ## [0.2.0] - 2026-10-11
 
 Non-breaking: the default stays the raw format, and existing calls send the same requests.
@@ -48,6 +54,7 @@ Non-breaking: the default stays the raw format, and existing calls send the same
 - `client.paginate()` async iterator that follows X's bottom cursor, plus `extractCursors()`.
 - ESM and CommonJS builds with type declarations. No runtime dependencies.
 
-[Unreleased]: https://github.com/twittrapi/twittrapi-node/compare/v0.2.0...HEAD
+[Unreleased]: https://github.com/twittrapi/twittrapi-node/compare/v0.2.1...HEAD
+[0.2.1]: https://github.com/twittrapi/twittrapi-node/compare/v0.2.0...v0.2.1
 [0.2.0]: https://github.com/twittrapi/twittrapi-node/compare/v0.1.0...v0.2.0
 [0.1.0]: https://github.com/twittrapi/twittrapi-node/releases/tag/v0.1.0

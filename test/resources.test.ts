@@ -132,7 +132,7 @@ describe("argument validation (no request is sent)", () => {
     ["non-numeric userId", (c) => c.users.getById("jack")],
     ["empty username", (c) => c.users.getByUsername("  @ ")],
     ["getMany empty", (c) => c.users.getMany([])],
-    ["getMany > 100", (c) => c.users.getMany(Array.from({ length: 101 }, (_, i) => String(i + 1)))],
+    ["getMany > 500", (c) => c.users.getMany(Array.from({ length: 501 }, (_, i) => String(i + 1)))],
     ["getMany bad id", (c) => c.users.getMany(["1", "x"])],
     ["timeline without user", (c) => c.users.tweets({} as never)],
     ["count 0", (c) => c.users.followers({ userId: "1", count: 0 })],

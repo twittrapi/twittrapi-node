@@ -138,7 +138,7 @@ Paginated methods take `count` (1 to 100, default 20) and `cursor`.
 await client.users.getByUsername("jack");
 await client.users.getById("12");
 await client.users.usernameToId("jack");
-await client.users.getMany(["12", "13", "783214"]); // up to 100 IDs
+await client.users.getMany(["12", "13", "783214"]); // up to 500 IDs
 
 await client.users.tweets({ username: "jack", count: 50 });
 await client.users.tweetsAndReplies({ userId: "12" });

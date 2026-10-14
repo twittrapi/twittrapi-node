@@ -19,7 +19,7 @@ import { APIResource, cleanUsername, formatMethod, enc, numericId, pageQuery, re
 /** Params for user timelines and follower lists: a user (by ID or handle) plus paging. */
 export type UserPageParams = UserTarget & PageParams;
 
-export const MAX_USERS_PER_REQUEST = 100;
+export const MAX_USERS_PER_REQUEST = 500;
 
 /** User profiles, timelines and follower graphs. */
 export class Users<F extends ResponseFormat = "raw"> extends APIResource<F> {
@@ -38,7 +38,7 @@ export class Users<F extends ResponseFormat = "raw"> extends APIResource<F> {
     this.client.get({ path: `/username/to/id/${enc(cleanUsername(username))}` }, options),
   );
 
-  /** Gets up to 100 profiles in one call by numeric user ID. */
+  /** Gets up to 500 profiles in one call by numeric user ID. */
   getMany = formatMethod<F, readonly string[], UsersResponse, SimpleUsersResponse>(async (userIds, options) => {
     if (!Array.isArray(userIds) || userIds.length === 0) {
       throw new ValidationError("userIds must be a non-empty array");
