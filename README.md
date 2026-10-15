@@ -56,6 +56,9 @@ const client = new TwittrAPI({ rapidApiKey: process.env.RAPIDAPI_KEY });
 
 Requests go to `https://twitter-aio.p.rapidapi.com` with `x-rapidapi-key` and `x-rapidapi-host`.
 
+Subscribed to another TwittrAPI listing on RapidAPI? Set its host with
+`rapidApiHost: "twttr.p.rapidapi.com"` or the `RAPIDAPI_HOST` environment variable.
+
 ### Keys from the environment
 
 With no key in the options, the client reads `TWITTRAPI_API_KEY`, then `RAPIDAPI_KEY`:
@@ -79,6 +82,7 @@ const { TwittrAPI } = require("twittrapi");
 new TwittrAPI({
   apiKey: "...",         // direct API key (or TWITTRAPI_API_KEY)
   rapidApiKey: "...",    // RapidAPI key (or RAPIDAPI_KEY)
+  rapidApiHost: "...",   // RapidAPI listing host (or RAPIDAPI_HOST), default twitter-aio.p.rapidapi.com
   baseUrl: "...",        // override the API base URL (direct mode also reads TWITTRAPI_BASE_URL)
   timeoutMs: 60_000,     // per attempt
   maxRetries: 2,         // for 429, 5xx, timeouts and network errors

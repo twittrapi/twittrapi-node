@@ -12,7 +12,7 @@ import {
 } from "../src/index.js";
 import { json, makeClient, mockFetch } from "./helpers.js";
 
-const ENV_KEYS = ["TWITTRAPI_API_KEY", "RAPIDAPI_KEY", "TWITTRAPI_BASE_URL"] as const;
+const ENV_KEYS = ["TWITTRAPI_API_KEY", "RAPIDAPI_KEY", "RAPIDAPI_HOST", "TWITTRAPI_BASE_URL"] as const;
 
 describe("TwittrAPI client configuration", () => {
   let saved: Record<string, string | undefined>;
@@ -47,6 +47,82 @@ describe("TwittrAPI client configuration", () => {
     assert.equal(calls[0]!.headers["x-rapidapi-key"], "rk");
     assert.equal(calls[0]!.headers["x-rapidapi-host"], RAPIDAPI_HOST);
     assert.equal(calls[0]!.headers["x-api-key"], undefined);
+  });
+
+  it("uses the rapidApiHost option for the header and the base URL", async () => {
+    const { client, calls } = makeClient([json({})], {
+      apiKey: undefined,
+      rapidApiKey: "rk",
+      rapidApiHost: "twttr.p.rapidapi.com",
+    });
+    assert.equal(client.rapidApiHost, "twttr.p.rapidapi.com");
+    assert.equal(client.baseUrl, "https://twttr.p.rapidapi.com");
+    await client.users.getByUsername("jack");
+    assert.equal(calls[0]!.url.toString(), "https://twttr.p.rapidapi.com/user/by/username/jack");
+    assert.equal(calls[0]!.headers["x-rapidapi-host"], "twttr.p.rapidapi.com");
+  });
+
+  it("reads RAPIDAPI_HOST from the environment; the option wins", async () => {
+    process.env.RAPIDAPI_KEY = "env-rapid";
+    process.env.RAPIDAPI_HOST = "env-host.p.rapidapi.com";
+    const mock = mockFetch(json({}));
+    const client = new TwittrAPI({ fetch: mock.fetch });
+    await client.trends.locations();
+    assert.equal(mock.calls[0]!.url.origin, "https://env-host.p.rapidapi.com");
+    assert.equal(mock.calls[0]!.headers["x-rapidapi-host"], "env-host.p.rapidapi.com");
+
+    const c2 = new TwittrAPI({ rapidApiHost: "opt.p.rapidapi.com", fetch: mockFetch().fetch });
+    assert.equal(c2.rapidApiHost, "opt.p.rapidapi.com");
+  });
+
+  it("normalizes rapidApiHost", () => {
+    const f = mockFetch().fetch;
+    for (const value of [
+      "twttr.p.rapidapi.com",
+      "https://twttr.p.rapidapi.com",
+      "https://twttr.p.rapidapi.com/",
+      " HTTP://Twttr.p.rapidapi.com// ",
+    ]) {
+      const client = new TwittrAPI({ rapidApiKey: "r", rapidApiHost: value, fetch: f });
+      assert.equal(client.rapidApiHost, "twttr.p.rapidapi.com", value);
+      assert.equal(client.baseUrl, "https://twttr.p.rapidapi.com", value);
+    }
+  });
+
+  it("rejects a rapidApiHost with a path or spaces", () => {
+    const f = mockFetch().fetch;
+    const invalid = ["https://twttr.p.rapidapi.com/v1", "twttr.p.rapidapi.com/user", "twttr p.rapidapi.com", "https://"];
+    for (const value of invalid) {
+      assert.throws(
+        () => new TwittrAPI({ rapidApiKey: "r", rapidApiHost: value, fetch: f }),
+        (err: unknown) => err instanceof ValidationError && /rapidApiHost/.test(err.message),
+        value,
+      );
+    }
+    process.env.RAPIDAPI_HOST = "host.test/path";
+    assert.throws(() => new TwittrAPI({ rapidApiKey: "r", fetch: f }), ValidationError);
+  });
+
+  it("an explicit baseUrl wins over rapidApiHost; the header still uses the host", async () => {
+    const { client, calls } = makeClient([json({})], {
+      apiKey: undefined,
+      rapidApiKey: "rk",
+      rapidApiHost: "twttr.p.rapidapi.com",
+      baseUrl: "http://proxy.test",
+    });
+    await client.users.getById("12");
+    assert.equal(calls[0]!.url.toString(), "http://proxy.test/user/12");
+    assert.equal(calls[0]!.headers["x-rapidapi-host"], "twttr.p.rapidapi.com");
+  });
+
+  it("direct mode ignores rapidApiHost and RAPIDAPI_HOST", async () => {
+    process.env.RAPIDAPI_HOST = "env-host.p.rapidapi.com";
+    const { client, calls } = makeClient([json({})], { rapidApiHost: "not a host/" });
+    assert.equal(client.authMode, "direct");
+    assert.equal(client.rapidApiHost, undefined);
+    await client.users.getById("12");
+    assert.equal(calls[0]!.url.origin, "https://api.twittrapi.com");
+    assert.equal(calls[0]!.headers["x-rapidapi-host"], undefined);
   });
 
   it("prefers apiKey over rapidApiKey", () => {

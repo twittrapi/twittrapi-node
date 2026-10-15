@@ -6,6 +6,17 @@ All notable changes to this package are listed here. The format follows
 
 ## [Unreleased]
 
+## [0.4.0] - 2026-10-15
+
+### Added
+
+- `rapidApiHost` client option (or the `RAPIDAPI_HOST` environment variable) for customers subscribed
+  to another TwittrAPI listing on RapidAPI. It sets the `x-rapidapi-host` header and the base URL
+  (`https://<host>`); an explicit `baseUrl` still wins. `https://` and a trailing slash are accepted;
+  a value with a path or spaces throws a `ValidationError`. The default stays
+  `twitter-aio.p.rapidapi.com`, and direct mode ignores it.
+- `client.rapidApiHost`: the host in use (undefined in direct mode).
+
 ## [0.3.0] - 2026-10-14
 
 ### Changed
@@ -69,7 +80,8 @@ Non-breaking: the default stays the raw format, and existing calls send the same
 - `client.paginate()` async iterator that follows X's bottom cursor, plus `extractCursors()`.
 - ESM and CommonJS builds with type declarations. No runtime dependencies.
 
-[Unreleased]: https://github.com/twittrapi/twittrapi-node/compare/v0.3.0...HEAD
+[Unreleased]: https://github.com/twittrapi/twittrapi-node/compare/v0.4.0...HEAD
+[0.4.0]: https://github.com/twittrapi/twittrapi-node/compare/v0.3.0...v0.4.0
 [0.3.0]: https://github.com/twittrapi/twittrapi-node/compare/v0.2.1...v0.3.0
 [0.2.1]: https://github.com/twittrapi/twittrapi-node/compare/v0.2.0...v0.2.1
 [0.2.0]: https://github.com/twittrapi/twittrapi-node/compare/v0.1.0...v0.2.0

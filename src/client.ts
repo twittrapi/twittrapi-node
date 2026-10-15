@@ -39,8 +39,14 @@ export interface ClientOptions<F extends ResponseFormat = "raw"> {
    */
   rapidApiKey?: string;
   /**
+   * RapidAPI host of the listing you subscribed to, e.g. twitter-aio.p.rapidapi.com (default).
+   * Sent as x-rapidapi-host and used for the base URL. "https://" and a trailing slash are
+   * accepted. Defaults to the RAPIDAPI_HOST environment variable. Ignored in direct mode.
+   */
+  rapidApiHost?: string;
+  /**
    * Overrides the API base URL. Defaults to https://api.twittrapi.com (direct) or
-   * https://twitter-aio.p.rapidapi.com (RapidAPI). TWITTRAPI_BASE_URL is read in direct mode.
+   * https://<rapidApiHost> (RapidAPI). TWITTRAPI_BASE_URL is read in direct mode.
    */
   baseUrl?: string;
   /** Timeout per attempt in milliseconds. Default 60000. */
@@ -100,6 +106,21 @@ function positiveNumber(name: string, value: number | undefined, fallback: numbe
   return value;
 }
 
+/** Strips "https://" and trailing slashes from a RapidAPI host; rejects paths and spaces. */
+function rapidApiHost(value: string): string {
+  const host = value
+    .trim()
+    .replace(/^https?:\/\//i, "")
+    .replace(/\/+$/, "")
+    .toLowerCase();
+  if (!host || /[\s/?#@]/.test(host)) {
+    throw new ValidationError(
+      `rapidApiHost must be a host like ${RAPIDAPI_HOST}, without a path (got ${JSON.stringify(value)})`,
+    );
+  }
+  return host;
+}
+
 /** Joins a base URL, a path and query parameters. Undefined and empty values are dropped. */
 export function buildUrl(baseUrl: string, req: APIRequest): string {
   const base = baseUrl.replace(/\/+$/, "");
@@ -146,6 +167,8 @@ function isRetryableStatus(status: number): boolean {
 export class TwittrAPI<F extends ResponseFormat = "raw"> {
   readonly authMode: AuthMode;
   readonly baseUrl: string;
+  /** RapidAPI host sent as x-rapidapi-host. Undefined in direct mode. */
+  readonly rapidApiHost: string | undefined;
   readonly timeoutMs: number;
   readonly maxRetries: number;
   readonly retryDelayMs: number;
@@ -179,9 +202,13 @@ export class TwittrAPI<F extends ResponseFormat = "raw"> {
 
     this.authMode = mode;
     this.#apiKey = key;
+    this.rapidApiHost =
+      mode === "rapidapi"
+        ? rapidApiHost(options.rapidApiHost?.trim() || readEnv("RAPIDAPI_HOST") || RAPIDAPI_HOST)
+        : undefined;
     this.baseUrl = (
       options.baseUrl?.trim() ||
-      (mode === "direct" ? readEnv("TWITTRAPI_BASE_URL") ?? DEFAULT_BASE_URL : RAPIDAPI_BASE_URL)
+      (mode === "direct" ? readEnv("TWITTRAPI_BASE_URL") ?? DEFAULT_BASE_URL : `https://${this.rapidApiHost}`)
     ).replace(/\/+$/, "");
     this.timeoutMs = positiveNumber("timeoutMs", options.timeoutMs, DEFAULT_TIMEOUT_MS);
     this.maxRetries = nonNegativeInt("maxRetries", options.maxRetries, DEFAULT_MAX_RETRIES);
@@ -210,7 +237,7 @@ export class TwittrAPI<F extends ResponseFormat = "raw"> {
     };
     if (this.authMode === "rapidapi") {
       headers["x-rapidapi-key"] = this.#apiKey;
-      headers["x-rapidapi-host"] = RAPIDAPI_HOST;
+      headers["x-rapidapi-host"] = this.rapidApiHost!;
     } else {
       headers["X-API-KEY"] = this.#apiKey;
     }
