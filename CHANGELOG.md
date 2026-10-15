@@ -2,11 +2,11 @@
 
 All notable changes to this package are listed here. The format follows
 [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) and the project uses
-[Semantic Versioning](https://semver.org/). Until 1.0.0, minor versions may contain breaking changes.
+[Semantic Versioning](https://semver.org/).
 
-## [Unreleased]
+## [1.0.0] - 2026-10-15
 
-## [0.4.0] - 2026-10-15
+First stable release: the API is stable and follows semantic versioning.
 
 ### Added
 
@@ -80,8 +80,7 @@ Non-breaking: the default stays the raw format, and existing calls send the same
 - `client.paginate()` async iterator that follows X's bottom cursor, plus `extractCursors()`.
 - ESM and CommonJS builds with type declarations. No runtime dependencies.
 
-[Unreleased]: https://github.com/twittrapi/twittrapi-node/compare/v0.4.0...HEAD
-[0.4.0]: https://github.com/twittrapi/twittrapi-node/compare/v0.3.0...v0.4.0
+[1.0.0]: https://github.com/twittrapi/twittrapi-node/compare/v0.3.0...v1.0.0
 [0.3.0]: https://github.com/twittrapi/twittrapi-node/compare/v0.2.1...v0.3.0
 [0.2.1]: https://github.com/twittrapi/twittrapi-node/compare/v0.2.0...v0.2.1
 [0.2.0]: https://github.com/twittrapi/twittrapi-node/compare/v0.1.0...v0.2.0
