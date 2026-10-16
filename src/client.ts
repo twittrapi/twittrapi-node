@@ -8,6 +8,7 @@ import {
   type RateLimitError,
 } from "./errors.js";
 import { paginate, type Page, type PageMethod, type PaginateOptions } from "./pagination.js";
+import { Account, type XSession } from "./resources/account.js";
 import { Communities } from "./resources/communities.js";
 import { Lists } from "./resources/lists.js";
 import { Search } from "./resources/search.js";
@@ -227,6 +228,22 @@ export class TwittrAPI<F extends ResponseFormat = "raw"> {
     this.lists = new Lists(this);
     this.communities = new Communities(this);
     this.trends = new Trends(this);
+  }
+
+  /**
+   * Actions run as your own X account (post, like, follow, upload, DMs, ...). Pass the session of
+   * that account once; every call of the returned Account sends it in the request body. Create one
+   * Account per X account. The cookie and proxy are masked when the Account is printed.
+   *
+   * ```ts
+   * const me = client.account({ cookie: process.env.X_COOKIE!, proxy: process.env.X_PROXY! });
+   * await me.createTweet({ text: "Hello" });
+   * ```
+   *
+   * How to get the cookie: https://twittrapi.com/docs/x-session
+   */
+  account(session: XSession): Account<F> {
+    return new Account(this, session);
   }
 
   /** Headers sent with every request. */

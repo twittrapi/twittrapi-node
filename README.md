@@ -9,6 +9,7 @@
 
 Official Node.js and TypeScript SDK for [TwittrAPI](https://twittrapi.com), a REST API for public Twitter/X data:
 tweets, profiles, followers, search, lists and communities. From $0.065 per 1,000 calls, no X developer account.
+It can also post, like, follow and send DMs as your own account (see [Account actions](#account-actions)).
 
 > **Get an API key:** [twittrapi.com/start](https://twittrapi.com/start?utm_source=github&utm_medium=readme&utm_campaign=twittrapi-node) · [Pricing](https://twittrapi.com/pricing?utm_source=github&utm_medium=readme&utm_campaign=twittrapi-node) · [Docs](https://twittrapi.com/docs?utm_source=github&utm_medium=readme&utm_campaign=twittrapi-node) · [Status](https://twittrapi.com/status) · also available on [RapidAPI](https://rapidapi.com/viperscores-viperscores-default/api/twitter-aio)
 
@@ -220,6 +221,69 @@ await client.trends.locations();          // all locations with their WOEIDs
 ```ts
 const data = await client.get({ path: "/some/endpoint", query: { foo: "bar" } });
 ```
+
+## Account actions
+
+Post, like, follow, upload media, edit your profile and send DMs as your own X account. Pass the
+account's session once with `client.account()`; every call sends it in the POST body.
+
+The session is the Cookie header of your logged-in X session (`auth_token`, `ct0` and `twid`) and
+a proxy (`http://user:pass@host:port`). How to get the cookie:
+[twittrapi.com/docs/x-session](https://twittrapi.com/docs/x-session). The SDK never logs the cookie
+or proxy, and masks them when the account object is printed or serialized.
+
+```ts
+const me = client.account({
+  cookie: process.env.X_COOKIE!, // "auth_token=...; ct0=...; twid=u%3D..."
+  proxy: process.env.X_PROXY!,   // "http://user:pass@host:port"
+});
+
+// Tweets
+await me.createTweet({ text: "Hello from the API" });
+await me.createTweet({ text: "Later", scheduleTime: new Date("2026-12-01T09:00:00Z") });
+await me.createTweet({ text: "Tabs or spaces?", poll: { choices: ["Tabs", "Spaces"], durationMinutes: 1440 } });
+await me.createTweet({ text: "Nice", quoteUrl: "https://x.com/jack/status/20" });
+await me.reply({ tweetId: "20", text: "Agreed" });
+await me.like("20");          // also unlike, retweet, unretweet, bookmark, unbookmark, pin, unpin, deleteTweet
+await me.report({ tweetId: "20", userId: "12", reason: "SpamSimpleOption" });
+
+// Media: base64 or bytes. Pass the media ID (data.mediaId in the simple format) in mediaIds.
+import { readFile } from "node:fs/promises";
+await me.uploadImage({ media: await readFile("photo.jpg") });
+await me.createTweet({ text: "Photo", mediaIds: ["1234567890"] });
+await me.uploadVideo({ media: await readFile("clip.mp4"), videoDurationMs: 12_000 });
+
+// Users: by ID or handle
+await me.follow({ username: "XDevelopers" }); // also unfollow, mute, unmute, block, unblock
+
+// Profile
+await me.updateProfile({ description: "Building things", location: "Berlin" });
+await me.updateProfileImage({ media: await readFile("avatar.png") }); // also updateProfileBanner
+
+// Your timelines and lists
+await me.homeTimeline();
+await me.bookmarks();        // also likes, blocked, muted, followersYouKnow({ username })
+await me.scheduledTweets();  // deleteScheduledTweet(id)
+
+// Lists, communities, drafts
+await me.lists.create({ name: "Friends", private: true }); // update, delete, addMember, removeMember
+await me.communities.join("1500000000000000000");          // create, delete, leave
+await me.drafts.create({ text: "Not yet" });              // list, edit, delete
+
+// DMs (encrypted X Chat): needs twid in the cookie and your X Chat passcode
+await me.dm.send({ userId: "12", text: "Hi", passcode: "1234" });
+await me.dm.inbox();        // also conversation, conversationInfo, setDisappearing, settings, updateSettings
+```
+
+The passcode can also go in the session (`client.account({ cookie, proxy, passcode })`).
+
+Raw answers are `{ status_code, response }`: X's status and X's body as a string.
+`parseAccountResponse(res)` returns X's JSON. With `format: "simple"` most routes return small
+objects instead, such as `{ data: { success: true } }` or the new tweet. The bookmarks, likes,
+blocked, muted and followersYouKnow pages work with `client.paginate()`.
+
+Account actions are not retried by default, because a retried write could run twice. Pass
+`{ maxRetries }` to opt in. `uploadVideo` waits up to 5 minutes for X to process the video.
 
 ## Pagination
 

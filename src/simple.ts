@@ -192,6 +192,32 @@ export interface SimpleTrendLocation {
 /** Item of a tweet timeline. */
 export type SimpleTimelineTweet = SimpleTweet | SimpleUnavailableTweet;
 
+/** Answer of the account actions (like, bookmark, delete, ...) in the simple format. */
+export interface SimpleActionResult {
+  success: boolean;
+  /** Only on retweet: the ID of the new retweet. */
+  retweetId?: string | null;
+  /** Only on a scheduled createTweet: the ID of the scheduled tweet. */
+  scheduledTweetId?: string | null;
+}
+
+/** An uploaded file (account.uploadImage / uploadVideo). Pass `mediaId` in `mediaIds`. */
+export interface SimpleMediaUpload {
+  mediaId: string;
+  mediaKey: string | null;
+  expiresAfterSecs: number | null;
+}
+
+/** A tweet waiting to be posted (account.scheduledTweets). */
+export interface SimpleScheduledTweet {
+  id: string;
+  text: string;
+  /** ISO 8601. */
+  executeAt: string | null;
+  state: string | null;
+  mediaIds: string[];
+}
+
 /**
  * True when `data` is a simple-format page (`{ data: [], nextCursor, previousCursor, hasNextPage }`).
  * Raw X JSON never has these keys at the top level.

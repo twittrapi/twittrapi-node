@@ -9,4 +9,5 @@ assert.ok(new RateLimitError("x", { status: 429 }) instanceof TwittrAPIError);
 assert.equal(VERSION, pkg.version);
 const client = new TwittrAPI({ apiKey: "test" });
 assert.equal(typeof client.users.getByUsername, "function");
+assert.equal(typeof client.account({ cookie: "auth_token=a; ct0=b", proxy: "http://h:1" }).like, "function");
 console.log("ESM smoke test passed");

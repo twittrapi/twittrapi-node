@@ -4,6 +4,34 @@ All notable changes to this package are listed here. The format follows
 [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) and the project uses
 [Semantic Versioning](https://semver.org/).
 
+## [1.1.0] - 2026-10-16
+
+### Added
+
+- Account actions: `client.account({ cookie, proxy })` returns an `Account` that runs the
+  `/client/*` routes as your own X account. The session is passed once and sent in each POST body.
+  - Tweets: `createTweet` (text, `mediaIds`, `quoteUrl`, `scheduleTime`, `communityId`, `poll`),
+    `reply`, `deleteTweet`, `like` / `unlike`, `retweet` / `unretweet`, `pin` / `unpin`,
+    `bookmark` / `unbookmark`, `bookmarks`, `report`, `homeTimeline`, `scheduledTweets`,
+    `deleteScheduledTweet`.
+  - Media: `uploadImage`, `uploadVideo` (5-minute default timeout), `mediaStatus`. Base64 or bytes.
+  - Profile: `updateProfile`, `updateProfileImage`, `updateProfileBanner`.
+  - Users, by ID or handle: `follow` / `unfollow`, `mute` / `unmute`, `block` / `unblock`.
+  - Account-only reads: `likes`, `blocked`, `muted`, `followersYouKnow`.
+  - `account.lists`: `create`, `update`, `delete`, `addMember`, `removeMember`.
+  - `account.communities`: `create`, `delete`, `join`, `leave`.
+  - `account.drafts`: `list`, `create`, `edit`, `delete`.
+  - `account.dm` (encrypted X Chat, needs `twid` and the passcode): `inbox`, `conversation`,
+    `conversationInfo`, `setDisappearing`, `send`, `settings`, `updateSettings`. The passcode can
+    be set in the session or per call.
+- The cookie, proxy and passcode are masked in `toString()`, `toJSON()` and `util.inspect`.
+- Account writes are not retried unless you pass `{ maxRetries }`, so a write never runs twice
+  because of a retry. Reads keep the client's retries.
+- `parseAccountResponse()` and `isAccountRawResponse()` for the `{ status_code, response }`
+  wrapper. `extractCursors()` and `client.paginate()` read cursors inside it.
+- Simple-format types for account routes: `SimpleActionResult`, `SimpleMediaUpload`,
+  `SimpleScheduledTweet` and the `Simple*Response` unions.
+
 ## [1.0.0] - 2026-10-15
 
 First stable release: the API is stable and follows semantic versioning.
@@ -80,6 +108,7 @@ Non-breaking: the default stays the raw format, and existing calls send the same
 - `client.paginate()` async iterator that follows X's bottom cursor, plus `extractCursors()`.
 - ESM and CommonJS builds with type declarations. No runtime dependencies.
 
+[1.1.0]: https://github.com/twittrapi/twittrapi-node/compare/v1.0.0...v1.1.0
 [1.0.0]: https://github.com/twittrapi/twittrapi-node/compare/v0.3.0...v1.0.0
 [0.3.0]: https://github.com/twittrapi/twittrapi-node/compare/v0.2.1...v0.3.0
 [0.2.1]: https://github.com/twittrapi/twittrapi-node/compare/v0.2.0...v0.2.1

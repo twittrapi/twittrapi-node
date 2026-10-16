@@ -1,3 +1,4 @@
+import { parseAccountResponse } from "./account-response.js";
 import { isSimplePage } from "./simple.js";
 import type { PageParams, RequestOptions } from "./types.js";
 
@@ -28,14 +29,14 @@ function cursorEntryValue(obj: Record<string, unknown>): string | undefined {
  * inside an entry whose `entryId` starts with `cursor-bottom-` / `cursor-top-`. Later pages often
  * carry them in `TimelineReplaceEntry` instructions instead of the entry list; the walk covers both.
  * Plain `next_cursor` / `nextCursor` fields are used as a fallback. The first match in document
- * order wins.
+ * order wins. The `{ status_code, response }` wrapper of the account routes is parsed first.
  *
  * This is best-effort: it depends on X's response shape, which can change without notice.
  */
 export function extractCursors(data: unknown): Cursors {
   const out: Cursors = {};
   let fallbackNext: string | undefined;
-  const stack: unknown[] = [data];
+  const stack: unknown[] = [parseAccountResponse(data)];
   let visited = 0;
   while (stack.length > 0 && visited < MAX_NODES) {
     const node = stack.pop();
@@ -93,7 +94,7 @@ export function extractBottomCursor(data: unknown): string | undefined {
 export function countTimelineEntries(data: unknown): { items: number; cursors: number } {
   let items = 0;
   let cursors = 0;
-  const stack: unknown[] = [data];
+  const stack: unknown[] = [parseAccountResponse(data)];
   let visited = 0;
   while (stack.length > 0 && visited < MAX_NODES) {
     const node = stack.pop();
