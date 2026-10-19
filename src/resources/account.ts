@@ -429,6 +429,94 @@ export interface EditDraftParams extends CreateDraftParams {
   draftTweetId: string;
 }
 
+/** Cursor of the next page; leave it out for the first page. */
+export interface BookmarkFoldersParams {
+  cursor?: string;
+}
+
+export interface BookmarkFolderParams {
+  /** Numeric folder ID from bookmarkFolders. */
+  folderId: string;
+  cursor?: string;
+}
+
+export interface SearchBookmarksParams extends PageParams {
+  /** Words to search your bookmarks for, up to 500 characters. */
+  query: string;
+}
+
+/** Cursor of the next page; leave it out for the first page. */
+export interface CommunityMembershipsParams {
+  cursor?: string;
+}
+
+/** Which articles articles.list returns. */
+export type ArticleLifecycle = "draft" | "published";
+const ARTICLE_LIFECYCLES: readonly ArticleLifecycle[] = ["draft", "published"];
+
+/** Who can read a published article. */
+export type ArticleVisibility = "public" | "subscribers";
+const ARTICLE_VISIBILITIES: readonly ArticleVisibility[] = ["public", "subscribers"];
+
+/** Who can reply to the post of a published article. */
+export type ArticleReplyControl = "all" | "community" | "verified" | "byinvitation";
+const ARTICLE_REPLY_CONTROLS: readonly ArticleReplyControl[] = ["all", "community", "verified", "byinvitation"];
+
+/** Kind of the cover media; DraftTweetImage for an image from uploadImage. */
+export type ArticleCoverMediaCategory = "DraftTweetImage" | "DraftTweetGif" | "AmplifyVideo";
+const ARTICLE_COVER_CATEGORIES: readonly ArticleCoverMediaCategory[] = [
+  "DraftTweetImage",
+  "DraftTweetGif",
+  "AmplifyVideo",
+];
+
+export interface ArticlesParams extends PageParams {
+  /** "draft" (default) or "published". */
+  lifecycle?: ArticleLifecycle;
+  /** Your numeric user ID. Needed only when the cookie has no twid. */
+  userId?: string;
+}
+
+/**
+ * An article's content in X's editor format, as articles.get returns it:
+ * `{ blocks: [{ key, text, type, data, entity_ranges, inline_style_ranges }], entity_map: [...] }`.
+ * Passed to X as is.
+ */
+export interface ContentState {
+  blocks: unknown[];
+  entity_map: unknown[];
+}
+
+/** Everything is optional: without title or content the draft starts empty. */
+export interface CreateArticleParams {
+  title?: string;
+  /** Plain text, one paragraph per line. Use text or contentState, not both. */
+  text?: string;
+  /** Content in X's editor format (see ContentState). Use text or contentState, not both. */
+  contentState?: ContentState;
+}
+
+/** articleId plus at least one change. text or contentState replaces the whole content. */
+export interface UpdateArticleParams extends CreateArticleParams {
+  articleId: string;
+  /** Numeric media ID from uploadImage or uploadVideo to use as the cover. */
+  coverMediaId?: string;
+  /** Kind of the cover media. Default DraftTweetImage. */
+  coverMediaCategory?: ArticleCoverMediaCategory;
+  /** true removes the cover. Not together with coverMediaId. */
+  removeCover?: boolean;
+}
+
+export interface PublishArticleParams {
+  articleId: string;
+  /** "public" (default) or "subscribers". */
+  visibility?: ArticleVisibility;
+  /** Who can reply. Default "all"; ignored for subscriber-only articles. */
+  replyControl?: ArticleReplyControl;
+  /** Text of the post that shares the article, up to 256 characters. */
+  tweetText?: string;
+}
+
 /** A conversation by ID, or the one-to-one chat with a user. */
 export type DMTarget =
   | { conversationId: string; userId?: undefined }
@@ -592,6 +680,32 @@ function birthdate(value: Birthdate | null | undefined): Fields | null | undefin
   };
 }
 
+function cursorField(p: { cursor?: string } | undefined): Fields {
+  return { cursor: p?.cursor || undefined };
+}
+
+function contentState(value: unknown): ContentState | undefined {
+  if (value === undefined) return undefined;
+  const v = value as Partial<ContentState> | null;
+  if (!v || typeof v !== "object" || Array.isArray(v) || !Array.isArray(v.blocks) || !Array.isArray(v.entity_map)) {
+    throw new ValidationError("contentState must be an object { blocks: [...], entity_map: [...] }");
+  }
+  return v as ContentState;
+}
+
+/** title, text and content_state of articles.create and articles.update. */
+function articleContent(p: CreateArticleParams): Fields {
+  const fields = {
+    title: optionalText("title", p.title),
+    text: optionalText("text", p.text),
+    content_state: contentState(p.contentState),
+  };
+  if (fields.text !== undefined && fields.content_state !== undefined) {
+    throw new ValidationError("Provide text or contentState, not both");
+  }
+  return fields;
+}
+
 function someDefined(fields: Fields): boolean {
   return Object.values(fields).some((v) => v !== undefined);
 }
@@ -651,7 +765,7 @@ export class AccountLists<F extends ResponseFormat = "raw"> extends AccountNames
   );
 }
 
-/** Communities: create, delete, join and leave. `account.communities`. */
+/** Communities: create, delete, join, leave and your memberships. `account.communities`. */
 export class AccountCommunities<F extends ResponseFormat = "raw"> extends AccountNamespace<F> {
   /** Creates a community. */
   create = method<AccountMethod<F, CreateCommunityParams, SimpleCreatedCommunityResponse>>(
@@ -696,6 +810,12 @@ export class AccountCommunities<F extends ResponseFormat = "raw"> extends Accoun
       true,
     ),
   );
+
+  /** Communities the account belongs to. Paginated (works with client.paginate). */
+  memberships = method<AccountMethodOptional<F, CommunityMembershipsParams, RawOnly>>(
+    async (p: CommunityMembershipsParams | undefined, options) =>
+      this.transport.send("/client/communities/memberships", cursorField(p), options, false),
+  );
 }
 
 /** Unsent drafts. `account.drafts`. */
@@ -725,6 +845,91 @@ export class AccountDrafts<F extends ResponseFormat = "raw"> extends AccountName
       options,
       true,
     ),
+  );
+}
+
+/**
+ * Your X Articles (long-form posts): list, read, create, update, publish, unpublish and delete.
+ * `account.articles`. Needs X Premium: without it X refuses in its answer.
+ */
+export class AccountArticles<F extends ResponseFormat = "raw"> extends AccountNamespace<F> {
+  /**
+   * Lists your articles: drafts (default) or published ones. Uses the twid cookie, or `userId` when
+   * the cookie has none. Paginated (works with client.paginate). Needs X Premium.
+   */
+  list = method<AccountMethodOptional<F, ArticlesParams, RawOnly>>(async (p: ArticlesParams | undefined, options) => {
+    const userId = p?.userId === undefined || p.userId === "" ? undefined : numericId("userId", p.userId);
+    if (!userId) this.transport.requireTwid("articles.list() without userId");
+    const body = {
+      lifecycle: oneOf("lifecycle", p?.lifecycle, ARTICLE_LIFECYCLES),
+      user_id: userId,
+      ...pageFields(p),
+    };
+    return this.transport.send("/client/articles", body, options, false);
+  });
+
+  /** Reads one of your articles: title, content (contentState), cover and status. Needs X Premium. */
+  get = method<AccountMethod<F, string, RawOnly>>(async (articleId: string, options) =>
+    this.transport.send("/client/articles/get", { article_id: numericId("articleId", articleId) }, options, false),
+  );
+
+  /**
+   * Creates a draft article. Title and content are optional (text as plain text, one paragraph per
+   * line, or contentState). The answer holds the new draft and its ID. Needs X Premium.
+   */
+  create = method<AccountMethodOptional<F, CreateArticleParams, RawOnly>>(
+    async (p: CreateArticleParams | undefined, options) => {
+      const v = p === undefined ? {} : params(p, "params");
+      return this.transport.send("/client/articles/create", articleContent(v), options, true);
+    },
+  );
+
+  /**
+   * Changes an article's title, content (text or contentState replace the whole content) and/or
+   * cover (coverMediaId, or removeCover). At least one change is required. Needs X Premium.
+   */
+  update = method<AccountMethod<F, UpdateArticleParams, RawOnly>>(async (p: UpdateArticleParams, options) => {
+    const v = params(p, "params");
+    const articleId = numericId("articleId", v.articleId);
+    const content = articleContent(v);
+    const coverId = v.coverMediaId === undefined ? undefined : numericId("coverMediaId", v.coverMediaId);
+    const removeCover = optionalBool("removeCover", v.removeCover);
+    if (coverId !== undefined && removeCover) throw new ValidationError("Provide coverMediaId or removeCover, not both");
+    const body = {
+      article_id: articleId,
+      ...content,
+      cover_media_id: coverId,
+      cover_media_category: oneOf("coverMediaCategory", v.coverMediaCategory, ARTICLE_COVER_CATEGORIES),
+      remove_cover: removeCover,
+    };
+    if (!someDefined(content) && coverId === undefined && !removeCover) {
+      throw new ValidationError("Provide at least one of title, text, contentState, coverMediaId or removeCover");
+    }
+    return this.transport.send("/client/articles/update", body, options, true);
+  });
+
+  /** Publishes a draft article as a post. Accepts the article ID or params. Needs X Premium. */
+  publish = method<AccountMethod<F, string | PublishArticleParams, RawOnly>>(
+    async (p: string | PublishArticleParams, options) => {
+      const v = typeof p === "string" ? { articleId: p } : params(p, "params");
+      const body = {
+        article_id: numericId("articleId", v.articleId),
+        visibility: oneOf("visibility", v.visibility, ARTICLE_VISIBILITIES),
+        reply_control: oneOf("replyControl", v.replyControl, ARTICLE_REPLY_CONTROLS),
+        tweet_text: optionalText("tweetText", v.tweetText, 256),
+      };
+      return this.transport.send("/client/articles/publish", body, options, true);
+    },
+  );
+
+  /** Turns a published article back into a draft. Needs X Premium. */
+  unpublish = method<AccountMethod<F, string, RawOnly>>(async (articleId: string, options) =>
+    this.transport.send("/client/articles/unpublish", { article_id: numericId("articleId", articleId) }, options, true),
+  );
+
+  /** Deletes an article. Needs X Premium. */
+  delete = method<AccountMethod<F, string, RawOnly>>(async (articleId: string, options) =>
+    this.transport.send("/client/articles/delete", { article_id: numericId("articleId", articleId) }, options, true),
   );
 }
 
@@ -844,7 +1049,7 @@ export const VIDEO_UPLOAD_TIMEOUT_MS = 300_000;
 
 /**
  * Actions run as your own X account: post, reply, like, follow, upload media, update the profile,
- * manage lists and communities, drafts and DMs. Create it with `client.account({ cookie, proxy })`.
+ * manage lists and communities, drafts, articles and DMs. Create it with `client.account({ cookie, proxy })`.
  *
  * ```ts
  * const me = client.account({ cookie: process.env.X_COOKIE!, proxy: process.env.X_PROXY! });
@@ -861,10 +1066,12 @@ export const VIDEO_UPLOAD_TIMEOUT_MS = 300_000;
 export class Account<F extends ResponseFormat = "raw"> extends AccountNamespace<F> {
   /** Create, update and delete lists, and manage their members. */
   readonly lists: AccountLists<F>;
-  /** Create, delete, join and leave communities. */
+  /** Create, delete, join and leave communities, and list the ones you belong to. */
   readonly communities: AccountCommunities<F>;
   /** Unsent drafts. */
   readonly drafts: AccountDrafts<F>;
+  /** X Articles (long-form posts). Needs X Premium. */
+  readonly articles: AccountArticles<F>;
   /** Encrypted direct messages. */
   readonly dm: AccountDMs<F>;
 
@@ -874,6 +1081,7 @@ export class Account<F extends ResponseFormat = "raw"> extends AccountNamespace<
     this.lists = new AccountLists(transport);
     this.communities = new AccountCommunities(transport);
     this.drafts = new AccountDrafts(transport);
+    this.articles = new AccountArticles(transport);
     this.dm = new AccountDMs(transport);
   }
 
@@ -975,6 +1183,37 @@ export class Account<F extends ResponseFormat = "raw"> extends AccountNamespace<
   bookmarks = method<AccountMethodOptional<F, AccountPageParams, SimpleAccountTweetsPage>>(
     async (p: AccountPageParams | undefined, options) =>
       this.transport.send("/client/bookmarks", pageFields(p), options, false),
+  );
+
+  /**
+   * Your bookmark folders and their IDs. Paginated (works with client.paginate). Needs X Premium:
+   * without it X refuses with error code 37 ("Twitter Blue claim is not enabled").
+   */
+  bookmarkFolders = method<AccountMethodOptional<F, BookmarkFoldersParams, RawOnly>>(
+    async (p: BookmarkFoldersParams | undefined, options) =>
+      this.transport.send("/client/bookmarks/folders", cursorField(p), options, false),
+  );
+
+  /**
+   * Tweets in one of your bookmark folders (folderId from bookmarkFolders). Paginated (works with
+   * client.paginate). Needs X Premium.
+   */
+  bookmarkFolder = method<AccountMethod<F, BookmarkFolderParams, RawOnly>>(
+    async (p: BookmarkFolderParams, options) => {
+      const v = params(p, "params");
+      const body = { folder_id: numericId("folderId", v.folderId), ...cursorField(v) };
+      return this.transport.send("/client/bookmarks/folder", body, options, false);
+    },
+  );
+
+  /** Searches your bookmarks (query up to 500 characters). Paginated (works with client.paginate). */
+  searchBookmarks = method<AccountMethod<F, SearchBookmarksParams, RawOnly>>(
+    async (p: SearchBookmarksParams, options) => {
+      const v = params(p, "params");
+      const query = nonEmpty("query", v.query);
+      if ([...query].length > 500) throw new ValidationError("query must be at most 500 characters");
+      return this.transport.send("/client/bookmarks/search", { query, ...pageFields(v) }, options, false);
+    },
   );
 
   /** Reports a tweet. */

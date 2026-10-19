@@ -119,6 +119,28 @@ const cases: Case[] = [
     body: { count: 50, cursor: "c1" },
     write: false,
   },
+  { name: "bookmarkFolders", call: (a) => a.bookmarkFolders(), path: "/client/bookmarks/folders", body: {}, write: false },
+  {
+    name: "bookmarkFolders paged",
+    call: (a) => a.bookmarkFolders({ cursor: "f2" }),
+    path: "/client/bookmarks/folders",
+    body: { cursor: "f2" },
+    write: false,
+  },
+  {
+    name: "bookmarkFolder",
+    call: (a) => a.bookmarkFolder({ folderId: "1650000000000000000", cursor: "c" }),
+    path: "/client/bookmarks/folder",
+    body: { folder_id: "1650000000000000000", cursor: "c" },
+    write: false,
+  },
+  {
+    name: "searchBookmarks",
+    call: (a) => a.searchBookmarks({ query: " typescript ", count: 100, cursor: "s" }),
+    path: "/client/bookmarks/search",
+    body: { query: "typescript", count: 100, cursor: "s" },
+    write: false,
+  },
   {
     name: "report",
     call: (a) => a.report({ tweetId: "20", userId: "12", reason: "SpamSimpleOption" }),
@@ -299,6 +321,14 @@ const cases: Case[] = [
     body: { community_id: "77" },
     write: true,
   },
+  { name: "communities.memberships", call: (a) => a.communities.memberships(), path: "/client/communities/memberships", body: {}, write: false },
+  {
+    name: "communities.memberships paged",
+    call: (a) => a.communities.memberships({ cursor: "m2" }),
+    path: "/client/communities/memberships",
+    body: { cursor: "m2" },
+    write: false,
+  },
   // drafts
   { name: "drafts.list", call: (a) => a.drafts.list(), path: "/client/drafts", body: {}, write: false },
   {
@@ -323,6 +353,67 @@ const cases: Case[] = [
     write: true,
   },
   { name: "drafts.delete", call: (a) => a.drafts.delete("8"), path: "/client/drafts/delete", body: { draft_tweet_id: "8" }, write: true },
+  // articles
+  { name: "articles.list", call: (a) => a.articles.list(), path: "/client/articles", body: {}, write: false },
+  {
+    name: "articles.list with options",
+    call: (a) => a.articles.list({ lifecycle: "published", count: 50, cursor: "p", userId: "4242" }),
+    path: "/client/articles",
+    body: { lifecycle: "published", user_id: "4242", count: 50, cursor: "p" },
+    write: false,
+  },
+  { name: "articles.get", call: (a) => a.articles.get("1800"), path: "/client/articles/get", body: { article_id: "1800" }, write: false },
+  { name: "articles.create empty", call: (a) => a.articles.create(), path: "/client/articles/create", body: {}, write: true },
+  {
+    name: "articles.create text",
+    call: (a) => a.articles.create({ title: "Notes", text: "One\nTwo" }),
+    path: "/client/articles/create",
+    body: { title: "Notes", text: "One\nTwo" },
+    write: true,
+  },
+  {
+    name: "articles.create contentState",
+    call: (a) => a.articles.create({ contentState: { blocks: [{ key: "a1b2c", text: "Hi" }], entity_map: [] } }),
+    path: "/client/articles/create",
+    body: { content_state: { blocks: [{ key: "a1b2c", text: "Hi" }], entity_map: [] } },
+    write: true,
+  },
+  {
+    name: "articles.update",
+    call: (a) => a.articles.update({ articleId: "1800", title: "New", coverMediaId: "555", coverMediaCategory: "DraftTweetGif" }),
+    path: "/client/articles/update",
+    body: { article_id: "1800", title: "New", cover_media_id: "555", cover_media_category: "DraftTweetGif" },
+    write: true,
+  },
+  {
+    name: "articles.update remove cover",
+    call: (a) => a.articles.update({ articleId: "1800", removeCover: true }),
+    path: "/client/articles/update",
+    body: { article_id: "1800", remove_cover: true },
+    write: true,
+  },
+  {
+    name: "articles.publish",
+    call: (a) => a.articles.publish("1800"),
+    path: "/client/articles/publish",
+    body: { article_id: "1800" },
+    write: true,
+  },
+  {
+    name: "articles.publish with options",
+    call: (a) => a.articles.publish({ articleId: "1800", visibility: "public", replyControl: "verified", tweetText: "New article" }),
+    path: "/client/articles/publish",
+    body: { article_id: "1800", visibility: "public", reply_control: "verified", tweet_text: "New article" },
+    write: true,
+  },
+  {
+    name: "articles.unpublish",
+    call: (a) => a.articles.unpublish("1800"),
+    path: "/client/articles/unpublish",
+    body: { article_id: "1800" },
+    write: true,
+  },
+  { name: "articles.delete", call: (a) => a.articles.delete("1800"), path: "/client/articles/delete", body: { article_id: "1800" }, write: true },
   // DMs (the session's passcode is "0420")
   { name: "dm.inbox", call: (a) => a.dm.inbox(), path: "/client/dm/inbox", body: { passcode: "0420" }, write: false },
   {
@@ -389,7 +480,7 @@ describe("account methods build the right request", () => {
 
   it("covers every account route", () => {
     const paths = new Set(cases.map((c) => c.path));
-    assert.equal(paths.size, 52);
+    assert.equal(paths.size, 63);
   });
 });
 
@@ -476,7 +567,7 @@ describe("account session is never exposed", () => {
   it("masks the session in inspect, toString, JSON and template strings", () => {
     const { client } = makeClient();
     const me = client.account(SESSION);
-    for (const obj of [me, me.lists, me.communities, me.drafts, me.dm]) {
+    for (const obj of [me, me.lists, me.communities, me.drafts, me.articles, me.dm]) {
       check(inspect(obj, { depth: 10, showHidden: true }));
       check(String(obj));
       check(`${obj}`);
@@ -575,6 +666,34 @@ describe("account argument validation (no request is sent)", () => {
     ["communities.join bad id", (a) => a.communities.join("c")],
     ["drafts.create empty", (a) => a.drafts.create({})],
     ["drafts.edit bad id", (a) => a.drafts.edit({ draftTweetId: "x", text: "t" })],
+    ["bookmarkFolder no folderId", (a) => a.bookmarkFolder({} as never)],
+    ["bookmarkFolder bad folderId", (a) => a.bookmarkFolder({ folderId: "abc" })],
+    ["searchBookmarks empty query", (a) => a.searchBookmarks({ query: " " })],
+    ["searchBookmarks long query", (a) => a.searchBookmarks({ query: "é".repeat(501) })],
+    ["searchBookmarks count 0", (a) => a.searchBookmarks({ query: "x", count: 0 })],
+    ["searchBookmarks count 101", (a) => a.searchBookmarks({ query: "x", count: 101 })],
+    ["articles.list without twid or userId", (a) => a.articles.list(), noTwid],
+    ["articles.list bad lifecycle", (a) => a.articles.list({ lifecycle: "archived" as never })],
+    ["articles.list bad userId", (a) => a.articles.list({ userId: "jack" })],
+    ["articles.list count 101", (a) => a.articles.list({ count: 101 })],
+    ["articles.get bad id", (a) => a.articles.get("x")],
+    ["articles.create text and contentState", (a) => a.articles.create({ text: "a", contentState: { blocks: [], entity_map: [] } })],
+    ["articles.create bad contentState", (a) => a.articles.create({ contentState: { blocks: "x" } as never })],
+    ["articles.create contentState without entity_map", (a) => a.articles.create({ contentState: { blocks: [] } as never })],
+    ["articles.create title not a string", (a) => a.articles.create({ title: 1 as never })],
+    ["articles.update nothing", (a) => a.articles.update({ articleId: "1" })],
+    ["articles.update only removeCover false", (a) => a.articles.update({ articleId: "1", removeCover: false })],
+    ["articles.update bad id", (a) => a.articles.update({ articleId: "x", title: "t" })],
+    ["articles.update text and contentState", (a) => a.articles.update({ articleId: "1", text: "a", contentState: { blocks: [], entity_map: [] } })],
+    ["articles.update bad coverMediaId", (a) => a.articles.update({ articleId: "1", coverMediaId: "img" })],
+    ["articles.update bad category", (a) => a.articles.update({ articleId: "1", coverMediaId: "5", coverMediaCategory: "Image" as never })],
+    ["articles.update cover and removeCover", (a) => a.articles.update({ articleId: "1", coverMediaId: "5", removeCover: true })],
+    ["articles.publish bad id", (a) => a.articles.publish({ articleId: "x" })],
+    ["articles.publish bad visibility", (a) => a.articles.publish({ articleId: "1", visibility: "private" as never })],
+    ["articles.publish bad replyControl", (a) => a.articles.publish({ articleId: "1", replyControl: "everyone" as never })],
+    ["articles.publish long tweetText", (a) => a.articles.publish({ articleId: "1", tweetText: "x".repeat(257) })],
+    ["articles.unpublish bad id", (a) => a.articles.unpublish("")],
+    ["articles.delete bad id", (a) => a.articles.delete("1.5")],
     ["dm without twid", (a) => a.dm.settings(), noTwid],
     ["dm.inbox count 51", (a) => a.dm.inbox({ count: 51 })],
     ["dm.conversation no target", (a) => a.dm.conversation({} as never)],
@@ -641,6 +760,20 @@ describe("account responses", () => {
     assert.equal(pages.length, 2);
     assert.equal(pages[0]!.nextCursor, "c2");
     assert.equal(JSON.parse(calls[1]!.body!).cursor, "c2");
+  });
+
+  it("paginate works with the new paginated account reads", async () => {
+    const { client, calls } = makeClient([json(wrap(page(["1"], "c2"))), json(wrap(page(["2"])))]);
+    const me = client.account(S);
+    const pages = [];
+    for await (const p of client.paginate(me.searchBookmarks, { query: "ts" }, { maxPages: 5 })) pages.push(p);
+    assert.equal(pages.length, 2);
+    assert.deepEqual(JSON.parse(calls[1]!.body!), { cookie: COOKIE, proxy: PROXY, query: "ts", cursor: "c2" });
+    // type-level: the cursor-only and folder reads are accepted by paginate
+    void client.paginate(me.bookmarkFolders, {});
+    void client.paginate(me.bookmarkFolder, { folderId: "1" });
+    void client.paginate(me.communities.memberships, {});
+    void client.paginate(me.articles.list, {});
   });
 
   it("Account can be constructed directly", async () => {

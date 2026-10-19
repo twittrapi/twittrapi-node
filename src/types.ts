@@ -28,9 +28,46 @@ export type TweetResponse = RawResponse;
 export type SearchResponse = RawResponse;
 export type ListResponse = RawResponse;
 export type CommunityResponse = RawResponse;
+/** Raw only: these routes have no simple format, so `format: "simple"` returns the same JSON. */
+export type CommunityAboutResponse = RawResponse;
+export type SpaceResponse = RawResponse;
 /** Trends endpoints may return arrays, so they stay `unknown` until a model exists. */
 export type TrendsResponse = unknown;
 export type TrendLocationsResponse = unknown;
+
+/** An item of a batch lookup that failed. The other items are still returned. */
+export interface BatchItemError {
+  /** The handle as looked up (without @). */
+  username: string;
+  /** "not_found", "suspended" (or another reason from X) or "upstream_error". */
+  error: string;
+  message?: string;
+}
+
+/** Answer of users.friendshipsBatch, built by the API. Raw only. */
+export interface FriendshipsBatchResponse {
+  source_screen_name: string;
+  /** In the order of the targets; failed targets are in `errors` instead. */
+  relationships: Array<{
+    target_screen_name: string;
+    /** The relationship object as /user/friendships/show returns it. */
+    relationship: RawResponse;
+  }>;
+  /** Present only when a lookup failed. */
+  errors?: BatchItemError[];
+}
+
+/** Answer of users.aboutBatch, built by the API. Raw only. */
+export interface AboutBatchResponse {
+  /** In the order of the usernames; failed handles are in `errors` instead. */
+  users: Array<{
+    username: string;
+    /** "About this account" as /user/about/{username} returns it. */
+    about: RawResponse;
+  }>;
+  /** Present only when a lookup failed. */
+  errors?: BatchItemError[];
+}
 
 /**
  * Response format. "raw" (the default) is X's JSON unchanged; "simple" is the compact format

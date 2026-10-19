@@ -1,4 +1,5 @@
 import type {
+  CommunityAboutResponse,
   CommunityResponse,
   PageParams,
   ResponseFormat,
@@ -23,6 +24,14 @@ export class Communities<F extends ResponseFormat = "raw"> extends APIResource<F
   /** Gets a community's name, description, rules, member count and admins. */
   get = formatMethod<F, string, CommunityResponse, SimpleCommunityResponse>(async (communityId, options) =>
     this.client.get({ path: `/communities/${numericId("communityId", communityId)}` }, options),
+  );
+
+  /**
+   * A community's About page: description, rules, creation date, moderators and a preview of the
+   * members. Raw only: the simple format returns the same JSON.
+   */
+  about = formatMethod<F, string, CommunityAboutResponse, CommunityAboutResponse>(async (communityId, options) =>
+    this.client.get({ path: `/communities/${numericId("communityId", communityId)}/about` }, options),
   );
 
   /** Tweets posted in a community. Paginated. */

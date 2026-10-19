@@ -1,5 +1,7 @@
 import { ValidationError } from "../errors.js";
 import type {
+  AboutBatchResponse,
+  FriendshipsBatchResponse,
   PageParams,
   RequestOptions,
   ResponseFormat,
@@ -20,6 +22,57 @@ import { APIResource, cleanUsername, formatMethod, enc, numericId, pageQuery, re
 export type UserPageParams = UserTarget & PageParams;
 
 export const MAX_USERS_PER_REQUEST = 500;
+/** Most target handles users.friendshipsBatch accepts per call (after duplicates are dropped). */
+export const MAX_FRIENDSHIP_TARGETS = 50;
+/** Most handles users.aboutBatch accepts per call (after duplicates are dropped). */
+export const MAX_ABOUT_USERNAMES = 20;
+
+const HANDLE = /^[A-Za-z0-9_]{1,15}$/;
+
+/** A handle without @, checked like the API does (1 to 15 letters, digits or underscores). */
+function handle(name: string, value: unknown): string {
+  const s = cleanUsername(value, name);
+  if (!HANDLE.test(s)) {
+    throw new ValidationError(`${name} must be an X handle (1 to 15 letters, digits or _), got ${JSON.stringify(s)}`);
+  }
+  return s;
+}
+
+/**
+ * Handles from an array or a comma-separated string: @ and spaces removed, each checked,
+ * duplicates dropped (case-insensitive, first spelling kept), at most `max`.
+ */
+function handleList(name: string, value: unknown, max: number): string[] {
+  const items = typeof value === "string" ? value.split(",") : value;
+  if (!Array.isArray(items)) {
+    throw new ValidationError(`${name} must be an array of handles or a comma-separated string`);
+  }
+  const seen = new Set<string>();
+  const out: string[] = [];
+  items.forEach((item, i) => {
+    if (typeof item === "string" && !item.trim() && typeof value === "string") return; // "a,,b"
+    const h = handle(`${name}[${i}]`, item);
+    const key = h.toLowerCase();
+    if (!seen.has(key)) {
+      seen.add(key);
+      out.push(h);
+    }
+  });
+  if (out.length === 0) throw new ValidationError(`${name} must contain at least one handle`);
+  if (out.length > max) {
+    throw new ValidationError(
+      `${name} accepts at most ${max} handles per call (duplicates count once), got ${out.length}`,
+    );
+  }
+  return out;
+}
+
+export interface FriendshipsBatchParams {
+  /** The account whose relationships are looked up (a leading @ is fine). */
+  source: string;
+  /** Up to 50 handles, as an array or a comma-separated string. Duplicates count once. */
+  targets: readonly string[] | string;
+}
 
 /** User profiles, timelines and follower graphs. */
 export class Users<F extends ResponseFormat = "raw"> extends APIResource<F> {
@@ -78,6 +131,46 @@ export class Users<F extends ResponseFormat = "raw"> extends APIResource<F> {
   /** A user's followers with a verified badge. Paginated. */
   verifiedFollowers = formatMethod<F, UserPageParams, TimelineResponse, SimpleUsersPage>(async (params, options) =>
     this.#timeline("verifiedFollowers", params, options),
+  );
+
+  /**
+   * Accounts affiliated with an organization (the Affiliates tab of a verified organization's
+   * profile). Paginated. In the simple format a page of users, like followers.
+   */
+  affiliates = formatMethod<F, UserPageParams, TimelineResponse, SimpleUsersPage>(async (params, options) =>
+    this.#timeline("affiliates", params, options),
+  );
+
+  /**
+   * Relationships of one account with up to 50 others (following, followed by, blocking, muting,
+   * ...), each as /user/friendships/show returns it. Billed one call per target handle
+   * (duplicates count once). Raw only: the simple format returns the same JSON.
+   */
+  friendshipsBatch = formatMethod<F, FriendshipsBatchParams, FriendshipsBatchResponse, FriendshipsBatchResponse>(
+    async (params, options) => {
+      if (!params || typeof params !== "object") throw new ValidationError("params must be an object");
+      const source = handle("source", params.source);
+      const targets = handleList("targets", params.targets, MAX_FRIENDSHIP_TARGETS);
+      return this.client.get(
+        {
+          path: "/user/friendships/batch",
+          query: { source_screen_name: source, target_screen_names: targets.join(",") },
+        },
+        options,
+      );
+    },
+  );
+
+  /**
+   * "About this account" for up to 20 handles, as an array or a comma-separated string. Each item
+   * is what /user/about/{username} returns. Billed one call per handle (duplicates count once).
+   * Raw only: the simple format returns the same JSON.
+   */
+  aboutBatch = formatMethod<F, readonly string[] | string, AboutBatchResponse, AboutBatchResponse>(
+    async (usernames, options) => {
+      const list = handleList("usernames", usernames, MAX_ABOUT_USERNAMES);
+      return this.client.get({ path: "/user/about/batch", query: { usernames: list.join(",") } }, options);
+    },
   );
 
   #timeline(suffix: string, params: UserPageParams, options?: RequestOptions): Promise<unknown> {

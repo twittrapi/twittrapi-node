@@ -24,6 +24,11 @@ import {
   type SimpleTweetsPage,
   type TimelineResponse,
   type UserResponse,
+  type AboutBatchResponse,
+  type CommunityAboutResponse,
+  type FriendshipsBatchResponse,
+  type SpaceResponse,
+  type TweetResponse,
 } from "../src/index.js";
 import { json, makeClient, mockFetch, simpleFixture, timeline } from "./helpers.js";
 
@@ -125,8 +130,15 @@ describe("simple format: request", () => {
     await client.communities.search({ query: "go" });
     await client.trends.get();
     await client.trends.locations();
+    await client.users.affiliates({ userId: "12" });
+    await client.users.friendshipsBatch({ source: "jack", targets: ["biz"] });
+    await client.users.aboutBatch(["jack"]);
+    await client.tweets.replies({ tweetId: "1" });
+    await client.tweets.thread("1");
+    await client.communities.about("7");
+    await client.spaces.get("1YqKDqWqdPLsV");
     await client.get({ path: "/user/about/jack" });
-    assert.equal(calls.length, 24);
+    assert.equal(calls.length, 31);
     for (const c of calls) assert.equal(c.url.searchParams.get("format"), "simple", c.url.toString());
   });
 
@@ -190,6 +202,24 @@ describe("simple format: types", () => {
     const e = await simple.users.followers({ userId: "1" }, { timeoutMs: 1000 });
     assertType<Equal<typeof e, SimpleUsersPage>>(true);
 
+    // new methods: users and tweets collections in the simple format, raw-only routes keep their raw type
+    const f = await simple.users.affiliates({ userId: "1" });
+    assertType<Equal<typeof f, SimpleUsersPage>>(true);
+    const g = await simple.tweets.replies({ tweetId: "1" });
+    assertType<Equal<typeof g, SimpleTweetsPage>>(true);
+    const h = await simple.tweets.thread("1");
+    assertType<Equal<typeof h, SimpleTweetsPage>>(true);
+    const i = await raw.tweets.thread("1");
+    assertType<Equal<typeof i, TweetResponse>>(true);
+    const j = await simple.spaces.get("abc");
+    assertType<Equal<typeof j, SpaceResponse>>(true);
+    const k = await simple.communities.about("1");
+    assertType<Equal<typeof k, CommunityAboutResponse>>(true);
+    const l = await simple.users.aboutBatch(["jack"]);
+    assertType<Equal<typeof l, AboutBatchResponse>>(true);
+    const m = await raw.users.friendshipsBatch({ source: "a", targets: "b" }, { format: "simple" });
+    assertType<Equal<typeof m, FriendshipsBatchResponse>>(true);
+
     // `new TwittrAPI({ format: "simple" })` infers the format; no option keeps raw.
     const inferred = new TwittrAPI({ apiKey: "k", fetch: mockFetch().fetch, format: "simple" });
     assertType<Equal<typeof inferred, TwittrAPI<"simple">>>(true);
@@ -211,6 +241,12 @@ describe("simple format: types", () => {
     const raw = makeClient([json(timeline(["1"]))]).client;
     for await (const page of raw.paginate(raw.users.followers, { userId: "1" })) {
       assertType<Equal<typeof page, Page<TimelineResponse>>>(true);
+    }
+    for await (const page of simple.paginate(simple.users.affiliates, { username: "XDevelopers" }, { maxPages: 1 })) {
+      assertType<Equal<typeof page, Page<SimpleUsersPage>>>(true);
+    }
+    for await (const page of simple.paginate(simple.tweets.replies, { tweetId: "1" }, { maxPages: 1 })) {
+      assertType<Equal<typeof page, Page<SimpleTweetsPage>>>(true);
     }
   });
 });

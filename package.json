@@ -1,6 +1,6 @@
 {
   "name": "twittrapi",
-  "version": "1.1.0",
+  "version": "1.2.0",
   "description": "Node.js and TypeScript SDK for TwittrAPI: read public Twitter/X tweets, profiles, followers and search results, and post, like, follow or send DMs as your own account. Pay as you go from $0.065 per 1,000 calls.",
   "license": "MIT",
   "author": "TwittrAPI",

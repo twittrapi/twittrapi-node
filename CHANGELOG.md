@@ -4,6 +4,31 @@ All notable changes to this package are listed here. The format follows
 [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) and the project uses
 [Semantic Versioning](https://semver.org/).
 
+## [1.2.0] - 2026-10-19
+
+### Added
+
+- `client.spaces.get(spaceId)`: a Space (live audio) by the ID from x.com/i/spaces/<id>. Raw only.
+- `communities.about(communityId)`: a community's About page (rules, moderators, members preview).
+  Raw only.
+- `users.affiliates({ userId | username })`: accounts affiliated with an organization. Paginated;
+  a page of users in the simple format.
+- `tweets.replies({ tweetId, rankingMode, includePromotedContent, cursor })`: only the replies to a
+  tweet. Paginated. `tweets.thread(tweetId)`: the author's own thread around a tweet, in reading
+  order. Both return tweets in the simple format.
+- `users.friendshipsBatch({ source, targets })` (up to 50 targets) and `users.aboutBatch(usernames)`
+  (up to 20 handles): batch forms of the friendship and "About this account" lookups, billed one
+  call per handle. Handles may be an array or a comma-separated string; `@` is removed and
+  duplicates are dropped before the limit is checked. Raw only, typed as
+  `FriendshipsBatchResponse` and `AboutBatchResponse`.
+- Account reads: `bookmarkFolders`, `bookmarkFolder({ folderId })` (both need X Premium),
+  `searchBookmarks({ query })` and `account.communities.memberships()`. All work with
+  `client.paginate()`.
+- `account.articles` (X Articles, needs X Premium): `list`, `get`, `create`, `update`, `publish`,
+  `unpublish`, `delete`. Content as plain text (`text`) or X's editor format (`contentState`).
+  The writes are not retried unless you pass `{ maxRetries }`, like the other account writes.
+- Invalid arguments of the new methods throw a `ValidationError` before any request is sent.
+
 ## [1.1.0] - 2026-10-16
 
 ### Added
@@ -108,6 +133,7 @@ Non-breaking: the default stays the raw format, and existing calls send the same
 - `client.paginate()` async iterator that follows X's bottom cursor, plus `extractCursors()`.
 - ESM and CommonJS builds with type declarations. No runtime dependencies.
 
+[1.2.0]: https://github.com/twittrapi/twittrapi-node/compare/v1.1.0...v1.2.0
 [1.1.0]: https://github.com/twittrapi/twittrapi-node/compare/v1.0.0...v1.1.0
 [1.0.0]: https://github.com/twittrapi/twittrapi-node/compare/v0.3.0...v1.0.0
 [0.3.0]: https://github.com/twittrapi/twittrapi-node/compare/v0.2.1...v0.3.0

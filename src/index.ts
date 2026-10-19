@@ -64,6 +64,7 @@ export {
 } from "./simple.js";
 export {
   Account,
+  AccountArticles,
   AccountCommunities,
   AccountDMs,
   AccountDrafts,
@@ -71,6 +72,19 @@ export {
   REPORT_REASONS,
   VIDEO_UPLOAD_TIMEOUT_MS,
   type AccountPageParams,
+  type ArticleCoverMediaCategory,
+  type ArticleLifecycle,
+  type ArticleReplyControl,
+  type ArticleVisibility,
+  type ArticlesParams,
+  type BookmarkFolderParams,
+  type BookmarkFoldersParams,
+  type CommunityMembershipsParams,
+  type ContentState,
+  type CreateArticleParams,
+  type PublishArticleParams,
+  type SearchBookmarksParams,
+  type UpdateArticleParams,
   type Birthdate,
   type BirthdateVisibility,
   type ConversationControlMode,
@@ -116,6 +130,7 @@ export {
 export { Communities, type CommunityPageParams, type CommunitySearchParams } from "./resources/communities.js";
 export { Lists, type ListPageParams } from "./resources/lists.js";
 export { Search, type SearchCategory, type SearchTweetsParams } from "./resources/search.js";
+export { Spaces } from "./resources/spaces.js";
 export { Trends, WOEID } from "./resources/trends.js";
 export {
   Tweets,
@@ -123,8 +138,16 @@ export {
   type TweetGetParams,
   type TweetLikersParams,
   type TweetPageParams,
+  type TweetRepliesParams,
 } from "./resources/tweets.js";
-export { MAX_USERS_PER_REQUEST, Users, type UserPageParams } from "./resources/users.js";
+export {
+  MAX_ABOUT_USERNAMES,
+  MAX_FRIENDSHIP_TARGETS,
+  MAX_USERS_PER_REQUEST,
+  Users,
+  type FriendshipsBatchParams,
+  type UserPageParams,
+} from "./resources/users.js";
 export type * from "./types.js";
 export { VERSION } from "./version.js";
 

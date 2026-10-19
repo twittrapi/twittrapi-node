@@ -7,6 +7,7 @@ import type {
   TimelineResponse,
   TweetResponse,
 } from "../types.js";
+import { ValidationError } from "../errors.js";
 import { APIResource, checkCount, formatMethod, nonEmpty, numericId, oneOf, pageQuery } from "./shared.js";
 
 export type RankingMode = "Relevance" | "Recency" | "Likes";
@@ -17,6 +18,16 @@ export interface TweetGetParams {
   /** Sort order of the replies. Default Relevance. */
   rankingMode?: RankingMode;
   /** Cursor for loading more replies. */
+  cursor?: string;
+}
+
+export interface TweetRepliesParams {
+  tweetId: string;
+  /** Sort order of the replies. Default Relevance. */
+  rankingMode?: RankingMode;
+  /** Include promoted replies. Default false. */
+  includePromotedContent?: boolean;
+  /** Cursor from the previous page to load more replies. */
   cursor?: string;
 }
 
@@ -48,6 +59,37 @@ export class Tweets<F extends ResponseFormat = "raw"> extends APIResource<F> {
       options,
     );
   });
+
+  /**
+   * Only the replies to a tweet, without the tweet itself or the tweets above it. Paginated. In the
+   * simple format `data` lists the replies in display order.
+   */
+  replies = formatMethod<F, TweetRepliesParams, TweetResponse, SimpleTweetsPage>(async (params, options) => {
+    const tweetId = numericId("tweetId", params?.tweetId);
+    if (params.includePromotedContent !== undefined && typeof params.includePromotedContent !== "boolean") {
+      throw new ValidationError("includePromotedContent must be true or false");
+    }
+    return this.client.get(
+      {
+        path: `/tweet/${tweetId}/replies`,
+        query: {
+          rankingMode: oneOf("rankingMode", params.rankingMode, RANKING_MODES),
+          includePromotedContent: params.includePromotedContent,
+          cursor: params.cursor,
+        },
+      },
+      options,
+    );
+  });
+
+  /**
+   * The author's own thread around a tweet: their tweets above it and their replies to themselves
+   * below it, in reading order. Ends at the first reply by someone else. Not paginated: long
+   * threads are loaded in the same request (one billed call).
+   */
+  thread = formatMethod<F, string, TweetResponse, SimpleTweetsPage>(async (tweetId, options) =>
+    this.client.get({ path: `/tweet/${numericId("tweetId", tweetId)}/thread` }, options),
+  );
 
   /** Users who retweeted a tweet. Paginated. */
   retweeters = formatMethod<F, TweetPageParams, TimelineResponse, SimpleUsersPage>(async (params, options) =>

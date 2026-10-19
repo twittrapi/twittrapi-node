@@ -57,6 +57,42 @@ const cases: Case[] = [
     path: "/user/-1/verifiedFollowers",
     query: { username: "jack", cursor: "c1" },
   },
+  {
+    name: "users.affiliates by id",
+    call: (c) => c.users.affiliates({ userId: "12", count: 100, cursor: "a" }),
+    path: "/user/12/affiliates",
+    query: { count: "100", cursor: "a" },
+  },
+  {
+    name: "users.affiliates by username",
+    call: (c) => c.users.affiliates({ username: "@XDevelopers" }),
+    path: "/user/-1/affiliates",
+    query: { username: "XDevelopers" },
+  },
+  {
+    name: "users.friendshipsBatch",
+    call: (c) => c.users.friendshipsBatch({ source: "@jack", targets: ["@biz", "Ev", "biz", " ev "] }),
+    path: "/user/friendships/batch",
+    query: { source_screen_name: "jack", target_screen_names: "biz,Ev" },
+  },
+  {
+    name: "users.friendshipsBatch (comma string)",
+    call: (c) => c.users.friendshipsBatch({ source: "jack", targets: "biz, @ev,," }),
+    path: "/user/friendships/batch",
+    query: { source_screen_name: "jack", target_screen_names: "biz,ev" },
+  },
+  {
+    name: "users.aboutBatch",
+    call: (c) => c.users.aboutBatch(["@jack", "XDevelopers", "JACK"]),
+    path: "/user/about/batch",
+    query: { usernames: "jack,XDevelopers" },
+  },
+  {
+    name: "users.aboutBatch (comma string)",
+    call: (c) => c.users.aboutBatch("jack,@biz"),
+    path: "/user/about/batch",
+    query: { usernames: "jack,biz" },
+  },
   // tweets
   { name: "tweets.get (string)", call: (c) => c.tweets.get("20"), path: "/tweet/20" },
   {
@@ -65,6 +101,14 @@ const cases: Case[] = [
     path: "/tweet/20",
     query: { rankingMode: "Recency", cursor: "c" },
   },
+  { name: "tweets.replies", call: (c) => c.tweets.replies({ tweetId: "20" }), path: "/tweet/20/replies" },
+  {
+    name: "tweets.replies with options",
+    call: (c) => c.tweets.replies({ tweetId: "20", rankingMode: "Likes", includePromotedContent: false, cursor: "r" }),
+    path: "/tweet/20/replies",
+    query: { rankingMode: "Likes", includePromotedContent: "false", cursor: "r" },
+  },
+  { name: "tweets.thread", call: (c) => c.tweets.thread("20"), path: "/tweet/20/thread" },
   {
     name: "tweets.retweeters",
     call: (c) => c.tweets.retweeters({ tweetId: "20", count: 40 }),
@@ -107,6 +151,7 @@ const cases: Case[] = [
   },
   // communities
   { name: "communities.get", call: (c) => c.communities.get("77"), path: "/communities/77" },
+  { name: "communities.about", call: (c) => c.communities.about("77"), path: "/communities/77/about" },
   {
     name: "communities.tweets",
     call: (c) => c.communities.tweets({ communityId: "77", count: 5 }),
@@ -122,6 +167,8 @@ const cases: Case[] = [
   { name: "trends.get", call: (c) => c.trends.get(23424977), path: "/trends/23424977" },
   { name: "trends.get default", call: (c) => c.trends.get(), path: "/trends/1" },
   { name: "trends.locations", call: (c) => c.trends.locations(), path: "/misc/locations" },
+  // spaces
+  { name: "spaces.get", call: (c) => c.spaces.get(" 1YqKDqWqdPLsV "), path: "/spaces/1YqKDqWqdPLsV" },
 ];
 
 describe("resource methods build the right request", () => {
@@ -145,9 +192,9 @@ describe("resource methods build the right request", () => {
     });
   }
 
-  it("covers all 23 endpoints", () => {
+  it("covers all 30 endpoints", () => {
     const methods = new Set(cases.map((c) => c.name.split(" ")[0]));
-    assert.equal(methods.size, 23);
+    assert.equal(methods.size, 30);
   });
 });
 
@@ -175,6 +222,32 @@ describe("argument validation (no request is sent)", () => {
     ["bad communityId", (c) => c.communities.get("")],
     ["empty community search", (c) => c.communities.search({ query: "" })],
     ["bad woeid", (c) => c.trends.get("us")],
+    ["affiliates without user", (c) => c.users.affiliates({} as never)],
+    ["affiliates count 101", (c) => c.users.affiliates({ userId: "1", count: 101 })],
+    ["friendshipsBatch no params", (c) => c.users.friendshipsBatch(undefined as never)],
+    ["friendshipsBatch no source", (c) => c.users.friendshipsBatch({ source: " ", targets: ["a"] })],
+    ["friendshipsBatch bad source", (c) => c.users.friendshipsBatch({ source: "not a handle", targets: ["a"] })],
+    ["friendshipsBatch no targets", (c) => c.users.friendshipsBatch({ source: "jack", targets: [] })],
+    ["friendshipsBatch empty string", (c) => c.users.friendshipsBatch({ source: "jack", targets: " , " })],
+    ["friendshipsBatch bad target", (c) => c.users.friendshipsBatch({ source: "jack", targets: ["ok", "a-b"] })],
+    ["friendshipsBatch long target", (c) => c.users.friendshipsBatch({ source: "jack", targets: ["x".repeat(16)] })],
+    [
+      "friendshipsBatch 51 targets",
+      (c) => c.users.friendshipsBatch({ source: "jack", targets: Array.from({ length: 51 }, (_, i) => `u${i}`) }),
+    ],
+    ["aboutBatch empty", (c) => c.users.aboutBatch([])],
+    ["aboutBatch not a list", (c) => c.users.aboutBatch(42 as never)],
+    ["aboutBatch empty item", (c) => c.users.aboutBatch(["jack", ""])],
+    ["aboutBatch bad handle", (c) => c.users.aboutBatch(["jack", "@@jack"])],
+    ["aboutBatch 21", (c) => c.users.aboutBatch(Array.from({ length: 21 }, (_, i) => `u${i}`))],
+    ["replies bad tweetId", (c) => c.tweets.replies({ tweetId: "x" })],
+    ["replies bad rankingMode", (c) => c.tweets.replies({ tweetId: "1", rankingMode: "Top" as never })],
+    ["replies bad includePromotedContent", (c) => c.tweets.replies({ tweetId: "1", includePromotedContent: "no" as never })],
+    ["thread bad tweetId", (c) => c.tweets.thread("12a")],
+    ["about bad communityId", (c) => c.communities.about("abc")],
+    ["space empty id", (c) => c.spaces.get("")],
+    ["space bad id", (c) => c.spaces.get("1Yq-KD")],
+    ["space long id", (c) => c.spaces.get("a".repeat(33))],
   ];
   for (const [name, call] of bad) {
     it(name, async () => {
@@ -183,6 +256,16 @@ describe("argument validation (no request is sent)", () => {
       assert.equal(calls.length, 0);
     });
   }
+
+  it("batch lookups accept the maximum after dropping duplicates", async () => {
+    const { client, calls } = makeClient();
+    const targets = Array.from({ length: 50 }, (_, i) => `u${i}`);
+    await client.users.friendshipsBatch({ source: "jack", targets: [...targets, "U0", "@u1"] });
+    assert.equal(calls[0]!.url.searchParams.get("target_screen_names"), targets.join(","));
+    const names = Array.from({ length: 20 }, (_, i) => `n${i}`);
+    await client.users.aboutBatch([...names, "N19"]);
+    assert.equal(calls[1]!.url.searchParams.get("usernames"), names.join(","));
+  });
 
   it("userId wins when both userId and username are passed", async () => {
     const { client, calls } = makeClient();

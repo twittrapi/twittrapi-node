@@ -12,6 +12,7 @@ import { Account, type XSession } from "./resources/account.js";
 import { Communities } from "./resources/communities.js";
 import { Lists } from "./resources/lists.js";
 import { Search } from "./resources/search.js";
+import { Spaces } from "./resources/spaces.js";
 import { Trends } from "./resources/trends.js";
 import { Tweets } from "./resources/tweets.js";
 import { Users } from "./resources/users.js";
@@ -182,6 +183,7 @@ export class TwittrAPI<F extends ResponseFormat = "raw"> {
   readonly lists: Lists<F>;
   readonly communities: Communities<F>;
   readonly trends: Trends<F>;
+  readonly spaces: Spaces<F>;
 
   readonly #apiKey: string;
   readonly #fetch: typeof fetch;
@@ -228,6 +230,7 @@ export class TwittrAPI<F extends ResponseFormat = "raw"> {
     this.lists = new Lists(this);
     this.communities = new Communities(this);
     this.trends = new Trends(this);
+    this.spaces = new Spaces(this);
   }
 
   /**

@@ -151,13 +151,23 @@ await client.users.media({ userId: "12" });
 await client.users.followers({ username: "jack", count: 100 });
 await client.users.following({ userId: "12" });
 await client.users.verifiedFollowers({ userId: "12" });
+await client.users.affiliates({ username: "XDevelopers" }); // accounts affiliated with an organization
+
+// Batch lookups (raw only), billed one call per handle; duplicates count once
+await client.users.friendshipsBatch({ source: "jack", targets: ["biz", "ev"] }); // up to 50 targets
+await client.users.aboutBatch(["jack", "XDevelopers"]); // "About this account", up to 20 handles
 ```
+
+The batch lookups also take a comma-separated string (`"jack,biz"`). Handles that fail are listed
+in `errors`; the others are still returned.
 
 ### Tweets
 
 ```ts
 await client.tweets.get("20"); // tweet plus reply thread
 await client.tweets.get({ tweetId: "20", rankingMode: "Recency" }); // Relevance | Recency | Likes
+await client.tweets.replies({ tweetId: "20", rankingMode: "Likes" }); // only the replies, paginated
+await client.tweets.thread("20"); // the author's own thread around the tweet, in reading order
 await client.tweets.retweeters({ tweetId: "20" });
 await client.tweets.quotes({ tweetId: "20" });
 ```
@@ -199,6 +209,7 @@ await client.lists.members({ listId: "1234567890" });
 
 ```ts
 await client.communities.get("1234567890");
+await client.communities.about("1234567890"); // rules, moderators, members preview (raw only)
 await client.communities.tweets({ communityId: "1234567890" });
 await client.communities.search({ query: "typescript" });
 ```
@@ -211,6 +222,12 @@ import { WOEID } from "twittrapi";
 await client.trends.get(WOEID.WORLDWIDE); // 1
 await client.trends.get(23424977);        // United States
 await client.trends.locations();          // all locations with their WOEIDs
+```
+
+### Spaces
+
+```ts
+await client.spaces.get("1YqKDqWqdPLsV"); // the ID from x.com/i/spaces/<id> (raw only)
 ```
 
 ### Endpoints not wrapped yet
@@ -263,12 +280,20 @@ await me.updateProfileImage({ media: await readFile("avatar.png") }); // also up
 // Your timelines and lists
 await me.homeTimeline();
 await me.bookmarks();        // also likes, blocked, muted, followersYouKnow({ username })
+await me.searchBookmarks({ query: "typescript" });
+await me.bookmarkFolders();  // Needs X Premium; then bookmarkFolder({ folderId })
 await me.scheduledTweets();  // deleteScheduledTweet(id)
 
 // Lists, communities, drafts
 await me.lists.create({ name: "Friends", private: true }); // update, delete, addMember, removeMember
-await me.communities.join("1500000000000000000");          // create, delete, leave
+await me.communities.join("1500000000000000000");          // create, delete, leave, memberships
 await me.drafts.create({ text: "Not yet" });              // list, edit, delete
+
+// Articles (long-form posts). Needs X Premium.
+await me.articles.create({ title: "Release notes", text: "First paragraph\nSecond paragraph" });
+await me.articles.update({ articleId: "1234567890", coverMediaId: "9876543210" });
+await me.articles.publish({ articleId: "1234567890", tweetText: "New article" }); // or publish(id)
+await me.articles.list({ lifecycle: "published" }); // also get, unpublish, delete
 
 // DMs (encrypted X Chat): needs twid in the cookie and your X Chat passcode
 await me.dm.send({ userId: "12", text: "Hi", passcode: "1234" });
@@ -279,8 +304,13 @@ The passcode can also go in the session (`client.account({ cookie, proxy, passco
 
 Raw answers are `{ status_code, response }`: X's status and X's body as a string.
 `parseAccountResponse(res)` returns X's JSON. With `format: "simple"` most routes return small
-objects instead, such as `{ data: { success: true } }` or the new tweet. The bookmarks, likes,
-blocked, muted and followersYouKnow pages work with `client.paginate()`.
+objects instead, such as `{ data: { success: true } }` or the new tweet. Bookmark folders, bookmark
+search, community memberships and articles have no simple format and always return the wrapper.
+The bookmarks, bookmark folder, bookmark search, likes, blocked, muted, followersYouKnow,
+community memberships and article list pages work with `client.paginate()`.
+
+Bookmark folders (`bookmarkFolders`, `bookmarkFolder`) and all `articles` methods need X Premium on
+the account. Without it X refuses in its answer (for bookmark folders error code 37).
 
 Account actions are not retried by default, because a retried write could run twice. Pass
 `{ maxRetries }` to opt in. `uploadVideo` waits up to 5 minutes for X to process the video.
