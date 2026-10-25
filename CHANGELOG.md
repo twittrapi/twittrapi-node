@@ -4,6 +4,16 @@ All notable changes to this package are listed here. The format follows
 [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) and the project uses
 [Semantic Versioning](https://semver.org/).
 
+## [Unreleased]
+
+### Added
+
+- `tweets.getMany(tweetIds)`: up to 100 tweets by numeric ID in one call, billed as one call. Raw:
+  one entry per ID in request order, `{}` for an ID without a tweet. Simple format: a page of the
+  tweets found, in request order (IDs without a tweet are left out). An empty array, more than
+  100 IDs or a non-numeric ID throws `ValidationError` before any request is sent.
+  `MAX_TWEETS_PER_REQUEST` is exported.
+
 ## [1.2.0] - 2026-10-19
 
 ### Added
@@ -133,6 +143,7 @@ Non-breaking: the default stays the raw format, and existing calls send the same
 - `client.paginate()` async iterator that follows X's bottom cursor, plus `extractCursors()`.
 - ESM and CommonJS builds with type declarations. No runtime dependencies.
 
+[Unreleased]: https://github.com/twittrapi/twittrapi-node/compare/v1.2.0...HEAD
 [1.2.0]: https://github.com/twittrapi/twittrapi-node/compare/v1.1.0...v1.2.0
 [1.1.0]: https://github.com/twittrapi/twittrapi-node/compare/v1.0.0...v1.1.0
 [1.0.0]: https://github.com/twittrapi/twittrapi-node/compare/v0.3.0...v1.0.0

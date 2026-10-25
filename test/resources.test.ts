@@ -108,6 +108,12 @@ const cases: Case[] = [
     path: "/tweet/20/replies",
     query: { rankingMode: "Likes", includePromotedContent: "false", cursor: "r" },
   },
+  {
+    name: "tweets.getMany",
+    call: (c) => c.tweets.getMany(["20", "1585841080431321088"]),
+    path: "/tweet/tweets/by/ids",
+    query: { ids: "20,1585841080431321088" },
+  },
   { name: "tweets.thread", call: (c) => c.tweets.thread("20"), path: "/tweet/20/thread" },
   {
     name: "tweets.retweeters",
@@ -192,9 +198,9 @@ describe("resource methods build the right request", () => {
     });
   }
 
-  it("covers all 30 endpoints", () => {
+  it("covers all 31 endpoints", () => {
     const methods = new Set(cases.map((c) => c.name.split(" ")[0]));
-    assert.equal(methods.size, 30);
+    assert.equal(methods.size, 31);
   });
 });
 
@@ -205,6 +211,10 @@ describe("argument validation (no request is sent)", () => {
     ["getMany empty", (c) => c.users.getMany([])],
     ["getMany > 500", (c) => c.users.getMany(Array.from({ length: 501 }, (_, i) => String(i + 1)))],
     ["getMany bad id", (c) => c.users.getMany(["1", "x"])],
+    ["tweets.getMany empty", (c) => c.tweets.getMany([])],
+    ["tweets.getMany > 100", (c) => c.tweets.getMany(Array.from({ length: 101 }, (_, i) => String(i + 1)))],
+    ["tweets.getMany bad id", (c) => c.tweets.getMany(["1", "12a"])],
+    ["tweets.getMany not an array", (c) => c.tweets.getMany("20" as never)],
     ["timeline without user", (c) => c.users.tweets({} as never)],
     ["count 0", (c) => c.users.followers({ userId: "1", count: 0 })],
     ["count 101", (c) => c.users.followers({ userId: "1", count: 101 })],
@@ -256,6 +266,12 @@ describe("argument validation (no request is sent)", () => {
       assert.equal(calls.length, 0);
     });
   }
+
+  it("tweets.getMany accepts exactly 100 IDs", async () => {
+    const { client, calls } = makeClient();
+    await client.tweets.getMany(Array.from({ length: 100 }, (_, i) => String(i + 1)));
+    assert.equal(calls[0]!.url.searchParams.get("ids")!.split(",").length, 100);
+  });
 
   it("batch lookups accept the maximum after dropping duplicates", async () => {
     const { client, calls } = makeClient();

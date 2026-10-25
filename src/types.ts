@@ -25,6 +25,8 @@ export type UsersResponse = RawResponse;
 export type UsernameToIdResponse = RawResponse;
 export type TimelineResponse = RawResponse;
 export type TweetResponse = RawResponse;
+/** Raw tweets.getMany: `data.tweetResult`, one entry per ID in request order, `{}` for an ID without a tweet. */
+export type TweetsResponse = RawResponse;
 export type SearchResponse = RawResponse;
 export type ListResponse = RawResponse;
 export type CommunityResponse = RawResponse;

@@ -6,12 +6,16 @@ import type {
   SimpleUsersPage,
   TimelineResponse,
   TweetResponse,
+  TweetsResponse,
 } from "../types.js";
 import { ValidationError } from "../errors.js";
 import { APIResource, checkCount, formatMethod, nonEmpty, numericId, oneOf, pageQuery } from "./shared.js";
 
 export type RankingMode = "Relevance" | "Recency" | "Likes";
 const RANKING_MODES: readonly RankingMode[] = ["Relevance", "Recency", "Likes"];
+
+/** Most tweet IDs tweets.getMany accepts per call. */
+export const MAX_TWEETS_PER_REQUEST = 100;
 
 export interface TweetGetParams {
   tweetId: string;
@@ -58,6 +62,22 @@ export class Tweets<F extends ResponseFormat = "raw"> extends APIResource<F> {
       },
       options,
     );
+  });
+
+  /**
+   * Gets up to 100 tweets in one call by numeric tweet ID, billed as one call. Raw: one entry per ID
+   * in request order, `{}` for an ID without a tweet (deleted or never existed). In the simple
+   * format `data` lists the tweets found in request order; IDs without a tweet are left out.
+   */
+  getMany = formatMethod<F, readonly string[], TweetsResponse, SimpleTweetsPage>(async (tweetIds, options) => {
+    if (!Array.isArray(tweetIds) || tweetIds.length === 0) {
+      throw new ValidationError("tweetIds must be a non-empty array");
+    }
+    if (tweetIds.length > MAX_TWEETS_PER_REQUEST) {
+      throw new ValidationError(`tweetIds accepts at most ${MAX_TWEETS_PER_REQUEST} IDs per call, got ${tweetIds.length}`);
+    }
+    const ids = tweetIds.map((id, i) => numericId(`tweetIds[${i}]`, id));
+    return this.client.get({ path: "/tweet/tweets/by/ids", query: { ids: ids.join(",") } }, options);
   });
 
   /**

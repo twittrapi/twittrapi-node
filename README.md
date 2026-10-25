@@ -166,6 +166,7 @@ in `errors`; the others are still returned.
 ```ts
 await client.tweets.get("20"); // tweet plus reply thread
 await client.tweets.get({ tweetId: "20", rankingMode: "Recency" }); // Relevance | Recency | Likes
+await client.tweets.getMany(["20", "1585841080431321088"]); // up to 100 IDs, one call
 await client.tweets.replies({ tweetId: "20", rankingMode: "Likes" }); // only the replies, paginated
 await client.tweets.thread("20"); // the author's own thread around the tweet, in reading order
 await client.tweets.retweeters({ tweetId: "20" });

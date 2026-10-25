@@ -133,6 +133,7 @@ export { Search, type SearchCategory, type SearchTweetsParams } from "./resource
 export { Spaces } from "./resources/spaces.js";
 export { Trends, WOEID } from "./resources/trends.js";
 export {
+  MAX_TWEETS_PER_REQUEST,
   Tweets,
   type RankingMode,
   type TweetGetParams,

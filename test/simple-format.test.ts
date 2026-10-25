@@ -29,6 +29,7 @@ import {
   type FriendshipsBatchResponse,
   type SpaceResponse,
   type TweetResponse,
+  type TweetsResponse,
 } from "../src/index.js";
 import { json, makeClient, mockFetch, simpleFixture, timeline } from "./helpers.js";
 
@@ -118,6 +119,7 @@ describe("simple format: request", () => {
     await client.users.following({ userId: "12" });
     await client.users.verifiedFollowers({ userId: "12" });
     await client.tweets.get("1");
+    await client.tweets.getMany(["1", "2"]);
     await client.tweets.retweeters({ tweetId: "1" });
     await client.tweets.likers({ tweetId: "1", cookie: "auth_token=a; ct0=b", proxy: "http://u:p@h:1" });
     await client.tweets.quotes({ tweetId: "1" });
@@ -138,7 +140,7 @@ describe("simple format: request", () => {
     await client.communities.about("7");
     await client.spaces.get("1YqKDqWqdPLsV");
     await client.get({ path: "/user/about/jack" });
-    assert.equal(calls.length, 31);
+    assert.equal(calls.length, 32);
     for (const c of calls) assert.equal(c.url.searchParams.get("format"), "simple", c.url.toString());
   });
 
@@ -211,6 +213,10 @@ describe("simple format: types", () => {
     assertType<Equal<typeof h, SimpleTweetsPage>>(true);
     const i = await raw.tweets.thread("1");
     assertType<Equal<typeof i, TweetResponse>>(true);
+    const n = await simple.tweets.getMany(["1"]);
+    assertType<Equal<typeof n, SimpleTweetsPage>>(true);
+    const o = await raw.tweets.getMany(["1"]);
+    assertType<Equal<typeof o, TweetsResponse>>(true);
     const j = await simple.spaces.get("abc");
     assertType<Equal<typeof j, SpaceResponse>>(true);
     const k = await simple.communities.about("1");
@@ -261,7 +267,14 @@ describe("simple format: fixtures", () => {
   it("tweet timelines match SimpleTweet, including media and unavailable placeholders", () => {
     let unavailable = 0;
     let media = 0;
-    for (const name of ["user-userid-tweets", "user-userid-media", "tweet-tweetid", "search", "capture-user_tweets"]) {
+    for (const name of [
+      "user-userid-tweets",
+      "user-userid-media",
+      "tweet-tweetid",
+      "search",
+      "capture-user_tweets",
+      "tweet-tweets-by-ids",
+    ]) {
       const page = simpleFixture<SimpleTweetsPage>(name);
       assert.deepEqual(keys(page), keys(PAGE_KEYS), name);
       assert.ok(isSimplePage(page), name);
@@ -278,6 +291,41 @@ describe("simple format: fixtures", () => {
     }
     assert.ok(media > 0, "fixtures contain media");
     assert.ok(unavailable > 0 || hasNestedUnavailable(), "fixtures contain an unavailable placeholder");
+  });
+
+  it("tweets.getMany: raw keeps one entry per ID, simple leaves out IDs without a tweet", async () => {
+    const raw = {
+      data: {
+        tweetResult: [
+          { result: { __typename: "Tweet", rest_id: "2019881223666233717" } },
+          { result: { __typename: "Tweet", rest_id: "20" } },
+          {},
+        ],
+      },
+    };
+    const simpleBody = simpleFixture<SimpleTweetsPage>("tweet-tweets-by-ids");
+    const { client, calls } = makeClient([json(raw), json(simpleBody)]);
+    const ids = ["2019881223666233717", "20", "1"];
+
+    const r = await client.tweets.getMany(ids);
+    const entries = (r.data as { tweetResult: unknown[] }).tweetResult;
+    assert.equal(entries.length, 3);
+    assert.deepEqual(entries[2], {});
+
+    const s = await client.tweets.getMany(ids, { format: "simple" });
+    assert.deepEqual(s, simpleBody);
+    assert.deepEqual(
+      s.data.map((t) => t.id),
+      ["2019881223666233717", "20"],
+    );
+    assert.equal(s.hasNextPage, false);
+    assert.deepEqual(
+      calls.map((c) => [c.url.pathname, c.url.searchParams.get("ids"), c.url.searchParams.get("format")]),
+      [
+        ["/tweet/tweets/by/ids", ids.join(","), null],
+        ["/tweet/tweets/by/ids", ids.join(","), "simple"],
+      ],
+    );
   });
 
   it("user lists and single users match SimpleUser", () => {
